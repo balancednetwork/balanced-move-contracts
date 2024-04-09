@@ -10,3 +10,5 @@ xcall = { git = "https://github.com/icon-project/xcall-multi.git", subdir = "con
 [addresses]
 balanced = "0x0"
 xcall_manager = "0x1"
+balanced_dollar = "0x2"
+asset_manager = "0x3"

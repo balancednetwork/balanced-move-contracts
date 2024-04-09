@@ -9,10 +9,10 @@ module balanced::balanced_dollar {
     use sui::coin::{Self, Coin, TreasuryCap};
     use sui::tx_context::{Self, TxContext};
     use sui::sui::SUI;
-       use sui::address::{Self};
-
+    use sui::address::{Self};
+    use sui::balance::{Self};
     use xcall::main::{Self};
-    use balanced::xcall_manager::{Self, XcallManagerVars};
+    use balanced::xcall_manager::{Self, Config as XcallManagerConfig};
 
     const CROSS_TRANSFER: vector<u8> = b"xCrossTransfer";
     const CROSS_TRANSFER_REVERT: vector<u8> = b"xCrossTransferRevert";
@@ -22,6 +22,7 @@ module balanced::balanced_dollar {
     const OnlyICONBnUSD: u64 = 3;
     const OnlyCallService: u64 = 4;
     const UnknownMessageType: u64 = 5;
+    const ENotTransferredAmount: u64 = 6;
 
     struct BALANCED_DOLLAR has drop {}
 
@@ -32,26 +33,20 @@ module balanced::balanced_dollar {
     struct XCrossTransfer has drop{
         from: String, 
         to: String,
-        value: u256,
+        value: u64,
         data: vector<u8>
     }
 
     struct XCrossTransferRevert has drop{
         to: String,
-        value: u256
+        value: u64
     }
 
-    struct BalancedDollarVars has key, store{
+    struct Config has key, store{
         id: UID, 
-        xCall: address,
         xCallNetworkAddress: String,
         nid: String,
         iconBnUSD: String,
-        xCallManager: address,
-    }
-
-    struct CallServiceCap has key{
-        id: UID, 
     }
 
     fun init(witness: BALANCED_DOLLAR, ctx: &mut TxContext) {
@@ -69,56 +64,54 @@ module balanced::balanced_dollar {
         
         transfer::public_share_object(metadata);
 
-        transfer::transfer(AdminCap{
+        transfer::transfer(AdminCap {
             id: object::new(ctx)
         }, tx_context::sender(ctx));
     }
 
-    entry fun configure(_: &AdminCap, _xCallNetworkAddress: String, _xCall: address, _nid: String, _iconBnUSD: String, _xCallManager: address,  ctx: &mut TxContext ){
-        transfer::share_object(BalancedDollarVars{
+    entry fun configure(_: &AdminCap, _xCallNetworkAddress: String, _nid: String, _iconBnUSD: String, ctx: &mut TxContext ){
+        transfer::share_object(Config {
             id: object::new(ctx),
-            xCall: _xCall,
             xCallNetworkAddress: _xCallNetworkAddress,
             nid: _nid,
-            iconBnUSD: _iconBnUSD,
-            xCallManager: _xCallManager
+            iconBnUSD: _iconBnUSD
         });
-        transfer::transfer(CallServiceCap{
-            id: object::new(ctx)
-        }, _xCall);
     }
 
     entry fun crossTransfer(
-        vars: &BalancedDollarVars,
-        xcallManagerVars: &XcallManagerVars,
+        config: &Config,
+        xcallManagerConfig: &XcallManagerConfig,
         coin: Coin<SUI>,
         token: Coin<BALANCED_DOLLAR>,
         treasury_cap: &mut TreasuryCap<BALANCED_DOLLAR>,
         to: String,
-        value: u256,
+        amount: u64,
         data: Option<vector<u8>>,
         ctx: &mut TxContext
     ) {
         let messageData = option::get_with_default(&data, b"");
-        assert!(value > 0, AmountLessThanMinimumAmount);
+        assert!(amount > 0, AmountLessThanMinimumAmount);
+        debug::print(&coin::value(&token));
+        debug::print(&amount);
+        //assert!(coin::value(&token) == amount, ENotTransferredAmount);
         coin::burn(treasury_cap, token);
 
-        let from = vars.xCallNetworkAddress;
+        let from = config.xCallNetworkAddress;
         string::append(&mut from, address::to_string(tx_context::sender(ctx)));
 
-        let xcallMessage = XCrossTransfer{
+        let xcallMessage = XCrossTransfer {
             from: from,
             to: to,
-            value: value,
+            value: amount,
             data: messageData
         };
 
-        let rollback = XCrossTransferRevert{
+        let rollback = XCrossTransferRevert {
             to: to,
-            value: value
+            value: amount
         };
 
-        let (sources, destinations) = xcall_manager::getProtocals(xcallManagerVars);
+        let (sources, destinations) = xcall_manager::getProtocals(xcallManagerConfig);
 
         // xcall::sendCallMessage(
         //     coin,
@@ -128,7 +121,7 @@ module balanced::balanced_dollar {
         //     sources,
         //     destinations
         // );
-        sendCallMessage(coin, vars.iconBnUSD, xcallMessage, rollback, sources, destinations, ctx );
+        sendCallMessage(coin, config.iconBnUSD, xcallMessage, rollback, sources, destinations, ctx );
     }
 
     //todo: remove this method once xcall integrated
@@ -143,13 +136,13 @@ module balanced::balanced_dollar {
     }
 
     public fun handleCallMessage(
-        vars: &BalancedDollarVars,
-        xcallManagerVars: &XcallManagerVars,
+        config: &Config,
+        xcallManagerConfig: &XcallManagerConfig,
         from: String,
         data: vector<u8>,
         protocols: vector<String>
     ) {
-        let verified = xcall_manager::verifyProtocols(xcallManagerVars, protocols);
+        let verified = xcall_manager::verifyProtocols(xcallManagerConfig, protocols);
         assert!(
             verified,
             ProtocolMismatch
@@ -160,20 +153,109 @@ module balanced::balanced_dollar {
 
         assert!(method == CROSS_TRANSFER || method == CROSS_TRANSFER_REVERT, UnknownMessageType);
         if (method == CROSS_TRANSFER) {
-            assert!(from == vars.iconBnUSD, OnlyICONBnUSD);
+            assert!(from == config.iconBnUSD, OnlyICONBnUSD);
             // Messages.XCrossTransfer memory message = data.decodeCrossTransfer(); 
             // (,string memory to) = message.to.parseNetworkAddress();
             // _mint(to.parseAddress("Invalid account"), message.value);
         } else if (method == CROSS_TRANSFER_REVERT) {
-            assert!(from == vars.xCallNetworkAddress, OnlyCallService);
+            assert!(from == config.xCallNetworkAddress, OnlyCallService);
             //Messages.XCrossTransferRevert memory message = data.decodeCrossTransferRevert();
             //_mint(message.to, message.value);
         } 
     }
 
 
-    #[test_only]
-    public fun init_for_testing(ctx: &mut TxContext) {
-        init(BALANCED_DOLLAR {}, ctx);
+    #[test]
+    fun test_config() {
+        use sui::test_scenario;
+
+        // Arrange
+        let admin = @0xBABE;
+        //let initial_owner = @0xCAFE;
+        //let final_owner = @0xFACE;
+        let witness = BALANCED_DOLLAR{};
+
+        let scenario_val = test_scenario::begin(admin);
+        let scenario = &mut scenario_val;
+        {
+            init(witness, test_scenario::ctx(scenario));
+        };
+
+        // Act
+        test_scenario::next_tx(scenario, admin);
+        {
+            let adminCap = test_scenario::take_from_sender<AdminCap>(scenario);
+            configure(&adminCap, string::utf8(b"sui1:xcall"), string::utf8(b"sui1"), string::utf8(b"icon1:hx534"),  test_scenario::ctx(scenario));
+
+            test_scenario::return_to_sender(scenario, adminCap);
+        };
+
+        // Assert
+        test_scenario::next_tx(scenario, admin);
+        {
+            let config = test_scenario::take_shared<Config>(scenario);
+            assert!(config.iconBnUSD == string::utf8(b"icon1:hx534"), 1);
+            assert!(config.xCallNetworkAddress == string::utf8(b"sui1:xcall"), 1);
+            assert!(config.nid == string::utf8(b"sui1"), 1);
+
+            test_scenario::return_shared( config);
+        };
+        test_scenario::end(scenario_val);
     }
+
+    #[test]
+    fun test_cross_transfer() {
+        use sui::test_scenario;
+        use sui::math;
+
+        // Arrange
+        let admin = @0xBABE;
+        let final_owner = @0xFACE;
+        let witness = BALANCED_DOLLAR{};
+
+        let scenario_val = test_scenario::begin(admin);
+        let scenario = &mut scenario_val;
+        {
+            init(witness, test_scenario::ctx(scenario));
+        };
+
+        // Act
+        test_scenario::next_tx(scenario, admin);
+        {
+            let adminCap = test_scenario::take_from_sender<AdminCap>(scenario);
+            configure(&adminCap, string::utf8(b"sui1:xcall"), string::utf8(b"sui1"), string::utf8(b"icon1:hx534"),  test_scenario::ctx(scenario));
+
+            test_scenario::return_to_sender(scenario, adminCap);
+            let sources = vector[string::utf8(b"xcall"), string::utf8(b"connection")];
+            let destinations = vector[string::utf8(b"icon:hx234"), string::utf8(b"icon:hx334")];
+            xcall_manager::shareConfig(
+                 string::utf8(b"iconGovernance"),
+                 admin,
+                 sources,
+                 destinations,
+                 string::utf8(b""),
+                 test_scenario::ctx(scenario)
+            );
+        };
+        
+        // Assert
+        test_scenario::next_tx(scenario, admin);
+        {
+            let config = test_scenario::take_shared<Config>(scenario);
+            let xcallManagerConfig: xcall_manager::Config = test_scenario::take_shared<xcall_manager::Config>(scenario);
+            let treasury_cap = test_scenario::take_from_address<TreasuryCap<BALANCED_DOLLAR>>(scenario, admin);
+
+            let fee_amount = math::pow(10, 9 + 4);
+            let bnusd_amount = math::pow(10, 18);
+            let fee = coin::mint_for_testing<SUI>(fee_amount, test_scenario::ctx(scenario));
+            let deposited = coin::mint(&mut treasury_cap, bnusd_amount, test_scenario::ctx(scenario));
+            
+            crossTransfer(&config, &xcallManagerConfig, fee, deposited, &mut treasury_cap, string::utf8(b"icon1:hx9445"),  bnusd_amount, option::none() , test_scenario::ctx(scenario));
+            test_scenario::return_shared(xcallManagerConfig);
+            test_scenario::return_shared( config);
+            test_scenario::return_to_address(admin, treasury_cap);
+        };
+        test_scenario::end(scenario_val);
+    }
+
 }

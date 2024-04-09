@@ -2,6 +2,7 @@
 module balanced::xcall_manager{
     use std::string::{Self, String};
     use std::vector;
+    use std::debug;
 
     use sui::tx_context::{Self, TxContext};
     use sui::object::{Self, UID};
@@ -15,9 +16,8 @@ module balanced::xcall_manager{
     const ProtocolMismatch: u64 = 1;
     const OnlyICONBalancedgovernanceIsAllowed: u64 = 2;
 
-    struct XcallManagerVars has key, store{
+    struct Config has key, store {
         id: UID, 
-        xCall: address,
         iconGovernance: String,
         admin: address,
         sources: vector<String>,
@@ -25,64 +25,60 @@ module balanced::xcall_manager{
         proposedProtocolToRemove: String
     }
 
-    struct AdminCap has key{
+    struct AdminCap has key {
         id: UID, 
     }
 
-    struct CallServiceCap has key{
+    struct CallServiceCap has key {
         id: UID, 
     }
 
     fun init(ctx: &mut TxContext){
-        transfer::transfer(AdminCap{
+        transfer::transfer(AdminCap {
             id: object::new(ctx)
         }, tx_context::sender(ctx));
     }
 
-    entry fun configure(_: &AdminCap, _iconGovernance: String, _xCall: address, _admin: address, _sources: vector<String>, _destinations: vector<String>, ctx: &mut TxContext ){
-        transfer::share_object(XcallManagerVars{
+    entry fun configure(_: &AdminCap, _iconGovernance: String,  _admin: address, _sources: vector<String>, _destinations: vector<String>, ctx: &mut TxContext ){
+        transfer::share_object(Config {
             id: object::new(ctx),
-            xCall: _xCall,
             iconGovernance: _iconGovernance,
             admin: _admin,
             sources: _sources,
             destinations: _destinations,
             proposedProtocolToRemove: string::utf8(b"")
         });
-        transfer::transfer(CallServiceCap{
-            id: object::new(ctx)
-        }, _xCall);
     }
 
-    public fun getProtocals(self: &XcallManagerVars):(vector<String>, vector<String>){
-        (self.sources, self.destinations)
+    public fun getProtocals(config: &Config):(vector<String>, vector<String>){
+        (config.sources, config.destinations)
     }
 
-    entry fun proposeRemoval(_: &AdminCap, vars: &mut XcallManagerVars, protocol: String) {
-        vars.proposedProtocolToRemove = protocol;
+    entry fun proposeRemoval(_: &AdminCap, config: &mut Config, protocol: String) {
+        config.proposedProtocolToRemove = protocol;
     }
 
     public fun handleCallMessage(
-        vars: &XcallManagerVars,
+        config: &Config,
         from: String,
         data: vector<vector<u8>>,
         protocols: vector<String>,
     
     )  {
         assert!(
-            from == vars.iconGovernance,
+            from == config.iconGovernance,
             OnlyICONBalancedgovernanceIsAllowed
         );
         
         //string memory method = data.getMethod();
         let method = CONFIGURE_PROTOCOLS_NAME; //read methdo from data
 
-        if (!verifyProtocolsUnordered(&protocols, &vars.sources)) {
+        if (!verifyProtocolsUnordered(&protocols, &config.sources)) {
             assert!(
                 method == CONFIGURE_PROTOCOLS_NAME,
                 ProtocolMismatch
             );
-            verifyProtocolRecovery(protocols, vars);
+            verifyProtocolRecovery(protocols, config);
         };
 
         method = EXECUTE_NAME;
@@ -103,14 +99,14 @@ module balanced::xcall_manager{
     }
     
     public fun verifyProtocols(
-       vars: &XcallManagerVars, protocols: vector<String>
+       config: &Config, protocols: vector<String>
     ): bool {
-         verifyProtocolsUnordered(&protocols, &vars.sources)
+         verifyProtocolsUnordered(&protocols, &config.sources)
     }
 
-    fun verifyProtocolRecovery(protocols: vector<String>, vars: &XcallManagerVars) {
+    fun verifyProtocolRecovery(protocols: vector<String>, config: &Config) {
         assert!(
-            verifyProtocolsUnordered(&getModifiedProtocols(vars), &protocols),
+            verifyProtocolsUnordered(&getModifiedProtocols(config), &protocols),
             ProtocolMismatch
         );
     }
@@ -136,25 +132,102 @@ module balanced::xcall_manager{
         }
     }
 
-    public fun getModifiedProtocols(vars: &XcallManagerVars): vector<String> {
-        assert!(vars.proposedProtocolToRemove != string::utf8(b""), NoProposalForRemovalExists);
+    public fun getModifiedProtocols(config: &Config): vector<String> {
+        assert!(config.proposedProtocolToRemove != string::utf8(b""), NoProposalForRemovalExists);
 
-        let v = vector::empty<String>();
-        let sourceLen = vector::length(&vars.sources);
+        let modifiedProtocols = vector::empty<String>();
+        let sourceLen = vector::length(&config.sources);
         let i = 0;
         while(i < sourceLen) {
-            let protocol = *vector::borrow(&vars.sources, i);
-            if(vars.proposedProtocolToRemove != protocol){
-                vector::push_back(&mut v, protocol);
+            let protocol = *vector::borrow(&config.sources, i);
+            if(config.proposedProtocolToRemove != protocol){
+                vector::push_back(&mut modifiedProtocols, protocol);
             };
             i = i+1;
         };
-        v
+        modifiedProtocols
     }
 
-     #[test_only]
-    public fun init_for_testing(ctx: &mut TxContext) {
-        init(ctx);
+    #[test_only]
+    public fun shareConfig(iconGovernance: String, admin: address, sources: vector<String>, destinations: vector<String>, proposedProtocolToRemove: String, ctx: &mut TxContext  ) {
+         transfer::share_object(Config {
+            id: object::new(ctx),
+            iconGovernance: iconGovernance,
+            admin: admin,
+            sources: sources,
+            destinations: destinations,
+            proposedProtocolToRemove: proposedProtocolToRemove
+        });
+    }
+
+    #[test]
+    fun test_config() {
+        use sui::test_scenario;
+
+        // Arrange
+        let admin = @0xBABE;
+
+        let scenario_val = test_scenario::begin(admin);
+        let scenario = &mut scenario_val;
+        {
+            init(test_scenario::ctx(scenario));
+        };
+
+        // Act
+        test_scenario::next_tx(scenario, admin);
+        {
+            let adminCap = test_scenario::take_from_sender<AdminCap>(scenario);
+            let sources = vector[string::utf8(b"xcall"), string::utf8(b"connection")];
+            let destinations = vector[string::utf8(b"icon:hx234"), string::utf8(b"icon:hx334")];
+            configure(&adminCap, string::utf8(b"icon:hx734"), admin, sources, destinations,  test_scenario::ctx(scenario));
+
+            test_scenario::return_to_sender(scenario, adminCap);
+        };
+
+        // Assert
+        test_scenario::next_tx(scenario, admin);
+        {
+            let config = test_scenario::take_shared<Config>(scenario);
+            assert!(config.iconGovernance == string::utf8(b"icon:hx734"), 1);
+
+            test_scenario::return_shared( config);
+        };
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    fun test_verify_protocols() {
+        use sui::test_scenario;
+
+        // Arrange
+        let admin = @0xBABE;
+
+        let scenario_val = test_scenario::begin(admin);
+        let scenario = &mut scenario_val;
+        {
+            init(test_scenario::ctx(scenario));
+        };
+
+        test_scenario::next_tx(scenario, admin);
+        {
+            let adminCap = test_scenario::take_from_sender<AdminCap>(scenario);
+            let sources = vector[string::utf8(b"xcall"), string::utf8(b"connection")];
+            let destinations = vector[string::utf8(b"icon:hx234"), string::utf8(b"icon:hx334")];
+            configure(&adminCap, string::utf8(b"icon:hx734"), admin, sources, destinations,  test_scenario::ctx(scenario));
+
+            test_scenario::return_to_sender(scenario, adminCap);
+        };
+
+        // Act & Assert
+        test_scenario::next_tx(scenario, admin);
+        {
+            let config = test_scenario::take_shared<Config>(scenario);
+            let sources = vector[string::utf8(b"xcall"), string::utf8(b"connection")];
+            let (verified) = verifyProtocols(&config, sources);
+            assert!(verified, 1);
+            test_scenario::return_shared( config);
+        };
+        test_scenario::end(scenario_val);
     }
 
 
