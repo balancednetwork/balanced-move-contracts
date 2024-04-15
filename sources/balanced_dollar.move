@@ -12,6 +12,8 @@ module balanced::balanced_dollar {
     use sui::address::{Self};
     use sui::balance::{Self};
     use xcall::main::{Self};
+    use xcall::envelope::{Self};
+
     use balanced::xcall_manager::{Self, Config as XcallManagerConfig};
 
     const CROSS_TRANSFER: vector<u8> = b"xCrossTransfer";
@@ -67,6 +69,7 @@ module balanced::balanced_dollar {
         transfer::transfer(AdminCap {
             id: object::new(ctx)
         }, tx_context::sender(ctx));
+        
     }
 
     entry fun configure(_: &AdminCap, _xCallNetworkAddress: String, _nid: String, _iconBnUSD: String, ctx: &mut TxContext ){
