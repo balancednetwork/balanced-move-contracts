@@ -26,25 +26,25 @@ module balanced::balanced_dollar {
     const UnknownMessageType: u64 = 5;
     const ENotTransferredAmount: u64 = 6;
 
-    struct BALANCED_DOLLAR has drop {}
+    public struct BALANCED_DOLLAR has drop {}
 
-    struct AdminCap has key{
+    public struct AdminCap has key{
         id: UID 
     }
 
-    struct XCrossTransfer has drop{
+    public struct XCrossTransfer has drop{
         from: String, 
         to: String,
         value: u64,
         data: vector<u8>
     }
 
-    struct XCrossTransferRevert has drop{
+    public struct XCrossTransferRevert has drop{
         to: String,
         value: u64
     }
 
-    struct Config has key, store{
+    public struct Config has key, store{
         id: UID, 
         xCallNetworkAddress: String,
         nid: String,
@@ -99,7 +99,7 @@ module balanced::balanced_dollar {
         //assert!(coin::value(&token) == amount, ENotTransferredAmount);
         coin::burn(treasury_cap, token);
 
-        let from = config.xCallNetworkAddress;
+        let mut from = config.xCallNetworkAddress;
         string::append(&mut from, address::to_string(tx_context::sender(ctx)));
 
         let xcallMessage = XCrossTransfer {
@@ -178,7 +178,7 @@ module balanced::balanced_dollar {
         //let final_owner = @0xFACE;
         let witness = BALANCED_DOLLAR{};
 
-        let scenario_val = test_scenario::begin(admin);
+        let mut scenario_val = test_scenario::begin(admin);
         let scenario = &mut scenario_val;
         {
             init(witness, test_scenario::ctx(scenario));
@@ -216,7 +216,7 @@ module balanced::balanced_dollar {
         let final_owner = @0xFACE;
         let witness = BALANCED_DOLLAR{};
 
-        let scenario_val = test_scenario::begin(admin);
+        let mut scenario_val = test_scenario::begin(admin);
         let scenario = &mut scenario_val;
         {
             init(witness, test_scenario::ctx(scenario));
@@ -246,7 +246,7 @@ module balanced::balanced_dollar {
         {
             let config = test_scenario::take_shared<Config>(scenario);
             let xcallManagerConfig: xcall_manager::Config = test_scenario::take_shared<xcall_manager::Config>(scenario);
-            let treasury_cap = test_scenario::take_from_address<TreasuryCap<BALANCED_DOLLAR>>(scenario, admin);
+            let mut treasury_cap = test_scenario::take_from_address<TreasuryCap<BALANCED_DOLLAR>>(scenario, admin);
 
             let fee_amount = math::pow(10, 9 + 4);
             let bnusd_amount = math::pow(10, 18);

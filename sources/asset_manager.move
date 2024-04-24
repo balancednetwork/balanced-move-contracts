@@ -34,14 +34,14 @@ module balanced::asset_manager{
     const UnknownMessageType: u64 = 4;
     const EZeroAmountRequired: u64 = 5;
 
-    struct ASSET_MANAGER has drop {}
+    public struct ASSET_MANAGER has drop {}
     
-     struct AssetManager<phantom T> has key, store{
+     public struct AssetManager<phantom T> has key, store{
         id: UID,
         balance: Balance<T>
     }
 
-    struct RateLimit<phantom T> has key {
+    public struct RateLimit<phantom T> has key {
         id: UID,
         period: u64,
         percentage: u64,
@@ -49,13 +49,13 @@ module balanced::asset_manager{
         currentLimit: u64
     }
 
-    struct Config has key{
+    public struct Config has key{
         id: UID, 
         xCallNetworkAddress: String,
         iconAssetManager: String
     }
 
-    struct Deposit has drop {
+    public struct Deposit has drop {
         tokenAddress: String,
         from: String,
         to: String,
@@ -63,20 +63,20 @@ module balanced::asset_manager{
         data: vector<u8>
     }
 
-    struct DepositRevert has drop {
+    public struct DepositRevert has drop {
         tokenAddress: String,
         to: String,
         amount: u64
     }
 
-    struct WithdrawTo has key {
+    public struct WithdrawTo has key {
         id: UID,
         tokenAddress: String,
         to: String,
         amount: u64
     }
 
-    struct AdminCap has key {
+    public struct AdminCap has key {
         id: UID, 
     }
 
@@ -104,7 +104,7 @@ module balanced::asset_manager{
 
     entry fun register_token<T>(token: Coin<T>, ctx: &mut TxContext ) {
        assert!(coin::value(&token)==0, EZeroAmountRequired);
-       let assetManager = AssetManager<T> {
+       let mut assetManager = AssetManager<T> {
             id: object::new(ctx),
             balance: balance::zero<T>()
         };
@@ -139,7 +139,7 @@ module balanced::asset_manager{
     }
 
     public entry fun deposit<T>(self: &mut AssetManager<T>, config: &Config, xcallManagerConfig: &XcallManagerConfig, value: Coin<SUI>, token: Coin<T>, amount: u64, to: Option<String>, data: Option<vector<u8>>, ctx: &mut TxContext) {
-        let fromAddress = config.xCallNetworkAddress;
+        let mut fromAddress = config.xCallNetworkAddress;
         string::append(&mut fromAddress, address::to_string(tx_context::sender(ctx)));
         let toAddress = option::get_with_default(&to, fromAddress);
         let messageData = option::get_with_default(&data, b"");
@@ -148,7 +148,7 @@ module balanced::asset_manager{
         assert!(coin::value(&token) == amount, ENotDepositedAmount);
         coin::put<T>(&mut self.balance, token);
 
-        let tokenNetworkAddress = config.xCallNetworkAddress;
+        let mut tokenNetworkAddress = config.xCallNetworkAddress;
         string::append(&mut tokenNetworkAddress, string::utf8(b"")); //get token address
         let depositMessage = Deposit {
             tokenAddress: tokenNetworkAddress,
@@ -227,7 +227,7 @@ module balanced::asset_manager{
         let admin = @0xBABE;
         let witness = ASSET_MANAGER{};
 
-        let scenario_val = test_scenario::begin(admin);
+        let mut scenario_val = test_scenario::begin(admin);
         let scenario = &mut scenario_val;
         {
             init(witness, test_scenario::ctx(scenario));
@@ -264,7 +264,7 @@ module balanced::asset_manager{
         let admin = @0xBABE;
         let witness = ASSET_MANAGER{};
 
-        let scenario_val = test_scenario::begin(admin);
+        let mut scenario_val = test_scenario::begin(admin);
         let scenario = &mut scenario_val;
         {
             init(witness, test_scenario::ctx(scenario));
@@ -308,7 +308,7 @@ module balanced::asset_manager{
         let admin = @0xBABE;
         let witness = ASSET_MANAGER{};
 
-        let scenario_val = test_scenario::begin(admin);
+        let mut scenario_val = test_scenario::begin(admin);
         let scenario = &mut scenario_val;
         {  init(witness, test_scenario::ctx(scenario)); };
         
@@ -338,7 +338,7 @@ module balanced::asset_manager{
         test_scenario::next_tx(scenario, admin);
         {
             let config = test_scenario::take_shared<Config>(scenario);
-            let assetManager = test_scenario::take_shared<AssetManager<BALANCED_DOLLAR>>(scenario);
+            let mut assetManager = test_scenario::take_shared<AssetManager<BALANCED_DOLLAR>>(scenario);
             let xcallManagerConfig: xcall_manager::Config  = test_scenario::take_shared<xcall_manager::Config>(scenario);
             let fee_amount = math::pow(10, 9 + 4);
             let bnusd_amount = math::pow(10, 18);

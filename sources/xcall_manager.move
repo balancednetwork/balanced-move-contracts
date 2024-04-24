@@ -16,7 +16,7 @@ module balanced::xcall_manager{
     const ProtocolMismatch: u64 = 1;
     const OnlyICONBalancedgovernanceIsAllowed: u64 = 2;
 
-    struct Config has key, store {
+    public struct Config has key, store {
         id: UID, 
         iconGovernance: String,
         admin: address,
@@ -25,11 +25,11 @@ module balanced::xcall_manager{
         proposedProtocolToRemove: String
     }
 
-    struct AdminCap has key {
+    public struct AdminCap has key {
         id: UID, 
     }
 
-    struct CallServiceCap has key {
+    public struct CallServiceCap has key {
         id: UID, 
     }
 
@@ -71,7 +71,7 @@ module balanced::xcall_manager{
         );
         
         //string memory method = data.getMethod();
-        let method = CONFIGURE_PROTOCOLS_NAME; //read methdo from data
+        let mut method = CONFIGURE_PROTOCOLS_NAME; //read methdo from data
 
         if (!verifyProtocolsUnordered(&protocols, &config.sources)) {
             assert!(
@@ -111,7 +111,7 @@ module balanced::xcall_manager{
         );
     }
 
-    public fun verifyProtocolsUnordered(
+    fun verifyProtocolsUnordered(
         array1: &vector<String>,
         array2: &vector<String>
     ):bool {
@@ -119,25 +119,25 @@ module balanced::xcall_manager{
         if(len1!=vector::length(array2)){
             false
         }else{
-            let match = true;
-            let i = 0;
+            let mut matched = true;
+            let mut i = 0;
             while(i < len1){
                 if(!vector::contains(array2, vector::borrow(array1, i))){
-                    match = false;
+                    matched = false;
                     break
                 };
                 i = i+1;
             };
-            match
+            matched
         }
     }
 
     public fun getModifiedProtocols(config: &Config): vector<String> {
         assert!(config.proposedProtocolToRemove != string::utf8(b""), NoProposalForRemovalExists);
 
-        let modifiedProtocols = vector::empty<String>();
+        let mut modifiedProtocols = vector::empty<String>();
         let sourceLen = vector::length(&config.sources);
-        let i = 0;
+        let mut i = 0;
         while(i < sourceLen) {
             let protocol = *vector::borrow(&config.sources, i);
             if(config.proposedProtocolToRemove != protocol){
@@ -167,7 +167,7 @@ module balanced::xcall_manager{
         // Arrange
         let admin = @0xBABE;
 
-        let scenario_val = test_scenario::begin(admin);
+        let mut scenario_val = test_scenario::begin(admin);
         let scenario = &mut scenario_val;
         {
             init(test_scenario::ctx(scenario));
@@ -202,7 +202,7 @@ module balanced::xcall_manager{
         // Arrange
         let admin = @0xBABE;
 
-        let scenario_val = test_scenario::begin(admin);
+        let mut scenario_val = test_scenario::begin(admin);
         let scenario = &mut scenario_val;
         {
             init(test_scenario::ctx(scenario));
