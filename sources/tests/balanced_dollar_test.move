@@ -72,7 +72,7 @@ module balanced::balanced_dollar_test {
             test_scenario::return_to_sender(scenario, adminCap);
             let sources = vector[string::utf8(b"xcall"), string::utf8(b"connection")];
             let destinations = vector[string::utf8(b"icon:hx234"), string::utf8(b"icon:hx334")];
-            xcall_manager::shareConfig(
+            xcall_manager::share_config_for_testing(
                  string::utf8(b"iconGovernance"),
                  admin,
                  sources,

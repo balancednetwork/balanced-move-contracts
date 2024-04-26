@@ -149,7 +149,7 @@ module balanced::xcall_manager{
     }
 
     #[test_only]
-    public fun shareConfig(iconGovernance: String, admin: address, sources: vector<String>, destinations: vector<String>, proposedProtocolToRemove: String, ctx: &mut TxContext  ) {
+    public fun share_config_for_testing(iconGovernance: String, admin: address, sources: vector<String>, destinations: vector<String>, proposedProtocolToRemove: String, ctx: &mut TxContext  ) {
          transfer::share_object(Config {
             id: object::new(ctx),
             iconGovernance: iconGovernance,

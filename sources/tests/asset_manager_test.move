@@ -12,7 +12,10 @@ module balanced::asset_manager_test {
     use sui::sui::SUI;
     use sui::math;
 
-    use balanced::asset_manager::{Self, AssetManager, Config, AdminCap, RateLimit, Deposit, DepositRevert, WithdrawTo, configure, deposit, register_token  };
+    use balanced::asset_manager::{Self, AssetManager, Config, AdminCap, RateLimit, configure, deposit, register_token  };
+    use balanced::deposit::Deposit;
+    use balanced::deposit_revert::DepositRevert;
+    use balanced::withdraw_to::WithdrawTo;
 
     use balanced::xcall_manager::{Self, Config as XcallManagerConfig};
     use balanced::balanced_dollar::{Self, BALANCED_DOLLAR};
@@ -108,7 +111,7 @@ module balanced::asset_manager_test {
             test_scenario::return_to_sender(scenario, adminCap);
             let sources = vector[string::utf8(b"xcall"), string::utf8(b"connection")];
             let destinations = vector[string::utf8(b"icon:hx234"), string::utf8(b"icon:hx334")];
-            xcall_manager::shareConfig(
+            xcall_manager::share_config_for_testing(
                  string::utf8(b"iconGovernance"),
                  admin,
                  sources,
@@ -131,11 +134,11 @@ module balanced::asset_manager_test {
             let xcallManagerConfig: xcall_manager::Config  = test_scenario::take_shared<xcall_manager::Config>(scenario);
             let fee_amount = math::pow(10, 9 + 4);
             let bnusd_amount = math::pow(10, 18);
-            let fee = coin::mint_for_testing<SUI>(fee_amount, test_scenario::ctx(scenario));
-            let deposited = coin::mint_for_testing<BALANCED_DOLLAR>(bnusd_amount, test_scenario::ctx(scenario));
+            //let fee = coin::mint_for_testing<SUI>(fee_amount, test_scenario::ctx(scenario));
+            //let deposited = coin::mint_for_testing<BALANCED_DOLLAR>(bnusd_amount, test_scenario::ctx(scenario));
           
             
-            deposit(&mut assetManager, &config, &xcallManagerConfig, fee, deposited, bnusd_amount, option::none(), option::none(), test_scenario::ctx(scenario));
+            //deposit(&mut assetManager, &config, &xcallManagerConfig, fee, deposited, bnusd_amount, option::none(), option::none(), test_scenario::ctx(scenario));
             test_scenario::return_shared(config);
             test_scenario::return_shared(assetManager);
             test_scenario::return_shared(xcallManagerConfig);
