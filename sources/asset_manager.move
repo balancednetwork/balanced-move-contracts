@@ -1,46 +1,40 @@
 #[allow(unused_const)]
 module balanced::asset_manager{
     use std::string::{Self, String};
-    use std::option::{Self, Option};
-    use std::debug;
-    use std::vector;
+    use std::type_name::{Self};
     
-    use sui::tx_context::{Self, TxContext};
-    use sui::object::{Self, UID};
-    use sui::transfer;
     use sui::coin::{Self, Coin};
     use sui::balance::{Self, Balance};
-    use sui::address::{Self};
     use sui::sui::SUI;
-    use sui::math;
     use sui::clock::{Self, Clock};
 
     use xcall::{main as xcall};
-    use xcall::xcall_state::{IDCap, Storage};
-    use xcall::envelope::{Self,XCallEnvelope};
-    use xcall::network_address::{Self, NetworkAddress};
+    use xcall::xcall_state::{Storage as XCallState};
+    use xcall::envelope::{Self};
+    use xcall::network_address::{Self};
+    use xcall::execute_ticket::{Self};
 
-    use balanced::xcall_manager::{Self, Config as XcallManagerConfig};
-    use balanced::balanced_dollar::{Self, BALANCED_DOLLAR};
-    use balanced::deposit::{Self, Deposit};
+    use balanced::xcall_manager::{Self, Config as XcallManagerConfig, XcallCap};
+    use balanced::deposit::{Self};
     use balanced::deposit_revert::{Self, DepositRevert};
     use balanced::withdraw_to::{Self, WithdrawTo};
+    use balanced::balanced_utils::{address_to_hex_string, address_from_hex_string};
 
+    const DEPOSIT_NAME: vector<u8> = b"Deposit";
+    const WITHDRAW_TO_NAME: vector<u8> = b"WithdrawTo";
+    const DEPOSIT_REVERT_NAME: vector<u8> = b"DepositRevert";
+    const WITHDRAW_NATIVE_TO_NAME: vector<u8> = b"WithdrawNativeTo";
 
-    const WITHDRAW_TO_NAME: vector<u8> = b"widraw";
-    const WITHDRAW_NATIVE_TO_NAME: vector<u8> = b"widraw_native";
-    const DEPOSIT_REVERT_NAME: vector<u8> = b"deposit_revert";
     const POINTS: u64 = 1000;
 
     const EAmountLessThanMinimumAmount: u64 = 0;
     const ENotDepositedAmount: u64 = 1;
     const EWithdrawTooLarge: u64 = 2;
-    const ProtocolMismatch: u64 = 3;
+    //const ProtocolMismatch: u64 = 3;
     const UnknownMessageType: u64 = 4;
     const EZeroAmountRequired: u64 = 5;
     const EExceedsWithdrawLimit: u64 = 6;
-
-    public struct ASSET_MANAGER has drop {}
+    const EIconAssetManagerRequired: u64 = 7;
     
     public struct AssetManager<phantom T> has key, store{
         id: UID,
@@ -65,16 +59,12 @@ module balanced::asset_manager{
         id: UID, 
     }
 
-    fun init(_witness:ASSET_MANAGER, ctx: &mut TxContext) {
+    fun init(ctx: &mut TxContext) {
+
         transfer::transfer(AdminCap {
             id: object::new(ctx)
-        }, tx_context::sender(ctx));
+        }, ctx.sender());
 
-    }
-
-    public fun register_dapp(_: &AdminCap, witness: ASSET_MANAGER, storage: &Storage, ctx: &mut TxContext){
-       let idCap =   xcall::register_dapp(storage, witness, ctx);
-       transfer::public_transfer(idCap, tx_context::sender(ctx));
     }
 
     entry fun configure(_: &AdminCap, _iconAssetManager: String, _xCallNetworkAddress: String, ctx: &mut TxContext ) {
@@ -122,16 +112,16 @@ module balanced::asset_manager{
     }
 
     public fun get_withdraw_limit<T>(self: &AssetManager<T>,
-        rateLimit: &mut RateLimit<T>, c: &Clock, ctx: &mut TxContext): u64  {
+        rateLimit: &RateLimit<T>, c: &Clock): u64  {
         let tokenBalance = balance::value(&self.balance);
         calculate_limit(tokenBalance, rateLimit, c)
     }
 
-    fun calculate_limit<T>(tokenBalance: u64, rateLimit: &mut RateLimit<T>, c: &Clock): u64 {
+    fun calculate_limit<T>(tokenBalance: u64, rateLimit: &RateLimit<T>, c: &Clock): u64 {
         let period = rateLimit.period;
         let percentage = rateLimit.percentage;
         if (period == 0) {
-            return 0;
+            return 0
         };
 
         let maxLimit = (tokenBalance * percentage) / POINTS;
@@ -155,70 +145,116 @@ module balanced::asset_manager{
         rateLimit.lastUpdate = clock::timestamp_ms(c);
     }
 
-    public entry fun deposit<T>(self: &mut AssetManager<T>, storage: &mut Storage, idCap: &IDCap, config: &Config, xcallManagerConfig: &XcallManagerConfig, fee: Coin<SUI>, token: Coin<T>, amount: u64, to: Option<String>, data: Option<vector<u8>>, ctx: &mut TxContext) {
-        let sender = address::to_string(tx_context::sender(ctx));
-        let fromAddress = network_address::to_string(&network_address::create(config.xCallNetworkAddress, sender));
-        let toAddress = network_address::to_string(&network_address::create(config.xCallNetworkAddress, option::get_with_default(&to, fromAddress)));
+    public entry fun deposit<T>(
+            self: &mut AssetManager<T>, 
+            xcallState: &mut XCallState, 
+            xcallCap: &XcallCap, 
+            config: &Config, 
+            xcallManagerConfig: &XcallManagerConfig, 
+            fee: Coin<SUI>,
+            token: Coin<T>, 
+            amount: u64, 
+            to: Option<address>, 
+            data: Option<vector<u8>>, 
+            ctx: &mut TxContext
+        ) {
+        let sender = tx_context::sender(ctx);
+        let string_from = address_to_hex_string(&tx_context::sender(ctx));
+        let from_address = network_address::to_string(&network_address::create(config.xCallNetworkAddress, string_from));
+        let mut to_address = from_address;
+        if(option::is_some(&to)){
+            let string_to = address_to_hex_string(option::borrow(&to));
+            to_address = network_address::to_string(&network_address::create(config.xCallNetworkAddress, string_to));
+        };
+
         let messageData = option::get_with_default(&data, b"");
         
         assert!(amount >= 0, EAmountLessThanMinimumAmount);
         assert!(coin::value(&token) == amount, ENotDepositedAmount);
         coin::put<T>(&mut self.balance, token);
 
-        let mut tokenNetworkAddress = config.xCallNetworkAddress;
-        string::append(&mut tokenNetworkAddress, string::utf8(b"")); //get token address
-
+        let token_address = string::from_ascii(type_name::get_address(&type_name::get<T>()));
         let depositMessage = deposit::wrap_deposit(
-            tokenNetworkAddress,
-            fromAddress,
-            toAddress,
+            token_address,
+            from_address,
+            to_address,
             amount,
             messageData
         );
-        let data = deposit::encode(&depositMessage);
+        let data = deposit::encode(&depositMessage, DEPOSIT_NAME);
 
+        
         let rollbackMessage = deposit_revert::wrap_deposit_revert (
-            tokenNetworkAddress,
+            token_address,
             sender,
             amount
         );
-        let rollback = deposit_revert::encode(&rollbackMessage);
+        let rollback = deposit_revert::encode(&rollbackMessage, DEPOSIT_REVERT_NAME);
 
-       let(sources, destinations) = xcall_manager::getProtocals(xcallManagerConfig); 
+       let(sources, destinations) = xcall_manager::get_protocals(xcallManagerConfig); 
+       let idcap = xcall_manager::get_idcap(xcallCap);
        let envelope = envelope::wrap_call_message_rollback(data, rollback, sources, destinations);
-        xcall::send_call(storage, fee, idCap, config.iconAssetManager, envelope::encode(&envelope), ctx);
+       xcall::send_call(xcallState, fee, idcap, config.iconAssetManager, envelope::encode(&envelope), ctx);
     }
 
-    public fun handle_call_message<T>(self: &mut AssetManager<T>,  xcallManagerConfig: &XcallManagerConfig, from: String, data: vector<u8>, protocols: vector<String>, ctx: &mut TxContext){
-        let verified = xcall_manager::verifyProtocols(xcallManagerConfig, protocols);
-        assert!(
-            verified,
-            ProtocolMismatch
-        );
+    // use this after discussion with Sabin 
+    // public fun get_withdraw_token_symbol(xcallCap: &XcallCap, xcall:&mut XCallState, request_id:u128, data:vector<u8>, ctx:&mut TxContext): String{
+    //     let idcap = xcall_manager::get_idcap(xcallCap);
+    //     let ticket = xcall::execute_call(xcall, idcap, request_id, data, ctx);
+    //     let msg = execute_ticket::message(&ticket);
+    //     //xcall::execute_call_result(xcall,ticket,false,fee,ctx);
+    //     let token_address: String = deposit::get_token_address(&msg);
+    //     token_address
+    // }
 
-        //string memory method = data.getMethod();
-        let method = WITHDRAW_TO_NAME;
+    entry public fun execute_call<T>(self: &mut AssetManager<T>, xcallCap: &XcallCap, config: &Config, xcall:&mut XCallState, fee:Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+        // let verified = xcall_manager::verify_protocols(xcallManagerConfig, protocols);
+        // assert!(
+        //     verified,
+        //     ProtocolMismatch
+        // );
+        
+        let idcap = xcall_manager::get_idcap(xcallCap);
+        let ticket = xcall::execute_call(xcall, idcap, request_id, data, ctx);
+        let msg = execute_ticket::message(&ticket);
+        let from = execute_ticket::from(&ticket);
+
+        let method: vector<u8> = deposit::get_method(&msg);
         assert!(
             method == WITHDRAW_TO_NAME || method == WITHDRAW_NATIVE_TO_NAME || method == DEPOSIT_REVERT_NAME,
             UnknownMessageType
         );
 
-        if (method == WITHDRAW_TO_NAME) {
-            // require(from.compareTo(iconAssetManager), "onlyICONAssetManager");
-            // Messages.WithdrawTo memory message = data.decodeWithdrawTo();
-            // withdraw(
-            //     message.tokenAddress.parseAddress("Invalid account"),
-            //     message.to.parseAddress("Invalid account"),
-            //     message.amount
-            // );
-        } else if (method == WITHDRAW_NATIVE_TO_NAME) {
-            //revert("Withdraw to native is currently not supported");
-        } else if (method == DEPOSIT_REVERT_NAME) {
-            // require(from.compareTo(xCallNetworkAddress), "onlyCallService");
-            // Messages.DepositRevert memory message = data.decodeDepositRevert();
-            // withdraw(message.tokenAddress, message.to, message.amount);
+        let token_address = deposit::get_token_address(&msg);
+        let coin_token_ddress = string::from_ascii(type_name::get_address(&type_name::get<T>()));
+        if(token_address == coin_token_ddress){
+            if (method == WITHDRAW_TO_NAME || method == WITHDRAW_NATIVE_TO_NAME) {
+                assert!(from == network_address::from_string(config.iconAssetManager), EIconAssetManagerRequired);
+                let message: WithdrawTo = withdraw_to::decode(&msg);
+                let to_address = network_address::addr(&network_address::from_string(withdraw_to::to(&message)));
+                withdraw(
+                    self,
+                    address_from_hex_string(&to_address),
+                    withdraw_to::amount(&message),
+                    ctx
+                );
+            } else if (method == DEPOSIT_REVERT_NAME) {
+                let message: DepositRevert = deposit_revert::decode(&msg);
+                    withdraw(
+                        self,
+                        deposit_revert::to(&message),
+                        deposit_revert::amount(&message),
+                        ctx
+                    );
+                
+            };
+            xcall::execute_call_result(xcall,ticket,true,fee,ctx);
+        }else{
+            xcall::execute_call_result(xcall,ticket,false,fee,ctx);
         };
+        
     }
+
 
     #[allow(unused_function)]
     fun withdraw<T>(self: &mut AssetManager<T>, to: address, amount: u64, ctx: &mut TxContext){
@@ -229,9 +265,8 @@ module balanced::asset_manager{
     }
 
     #[test_only]
-    /// Wrapper of module initializer for testing
-    public fun test_init(ctx: &mut TxContext) {
-        init(ASSET_MANAGER {}, ctx)
+    public fun init_test(ctx: &mut TxContext) {
+        init(ctx)
     }
 
 }

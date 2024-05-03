@@ -22,7 +22,7 @@ module balanced::xcall_manager_test {
         let mut scenario_val = test_scenario::begin(admin);
         let scenario = &mut scenario_val;
         {
-            xcall_manager::test_init(test_scenario::ctx(scenario));
+            xcall_manager::init_test(test_scenario::ctx(scenario));
         };
 
         // Act
@@ -55,7 +55,7 @@ module balanced::xcall_manager_test {
         let mut scenario_val = test_scenario::begin(admin);
         let scenario = &mut scenario_val;
         {
-            xcall_manager::test_init(test_scenario::ctx(scenario));
+            xcall_manager::init_test(test_scenario::ctx(scenario));
         };
 
         test_scenario::next_tx(scenario, admin);

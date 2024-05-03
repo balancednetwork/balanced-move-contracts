@@ -1,20 +1,29 @@
 #[allow(unused_const)]
 module balanced::xcall_manager{
     use std::string::{Self, String};
-    use std::vector;
-    use std::debug;
 
-    use sui::tx_context::{Self, TxContext};
-    use sui::object::{Self, UID};
-    use sui::transfer;
-    
+    use sui::coin::{Coin};
+    use sui::sui::{SUI};
 
-    const CONFIGURE_PROTOCOLS_NAME: vector<u8> = b"ConfigureProtocols";
-    const EXECUTE_NAME: vector<u8> = b"Execute";
+    use xcall::{main as xcall};
+    use xcall::xcall_state::{IDCap, Storage as XCallState};
+    use xcall::network_address::{Self};
+    use xcall::execute_ticket::{Self};
+
+    use balanced::configure_protocol::{Self, ConfigureProtocol};
 
     const NoProposalForRemovalExists: u64 = 0;
     const ProtocolMismatch: u64 = 1;
     const OnlyICONBalancedgovernanceIsAllowed: u64 = 2;
+    const UnknownMessageType: u64 = 3;
+    const EIconAssetManagerRequired: u64 = 4;
+
+    const EXECUTE_METHOD_NAME: vector<u8> = b"Execute";
+    const CONFIGURE_PROTOCOLS_NAME: vector<u8> = b"ConfigureProtocols";
+
+    public struct REGISTER_WITNESS has drop, store {}
+
+    public struct WitnessCarrier has key { id: UID, witness: REGISTER_WITNESS }
 
     public struct Config has key, store {
         id: UID, 
@@ -23,6 +32,11 @@ module balanced::xcall_manager{
         sources: vector<String>,
         destinations: vector<String>,
         proposedProtocolToRemove: String
+    }
+
+    public struct XcallCap has key {
+        id: UID,
+        idCap: IDCap
     }
 
     public struct AdminCap has key {
@@ -37,6 +51,11 @@ module balanced::xcall_manager{
         transfer::transfer(AdminCap {
             id: object::new(ctx)
         }, tx_context::sender(ctx));
+
+        transfer::transfer(
+            WitnessCarrier { id: object::new(ctx), witness:REGISTER_WITNESS{} },
+            ctx.sender()
+        );
     }
 
     entry fun configure(_: &AdminCap, _iconGovernance: String,  _admin: address, _sources: vector<String>, _destinations: vector<String>, ctx: &mut TxContext ){
@@ -50,68 +69,117 @@ module balanced::xcall_manager{
         });
     }
 
-    public fun getProtocals(config: &Config):(vector<String>, vector<String>){
+    public fun register_xcall(xcallState: &XCallState, witnessCarrier: WitnessCarrier, ctx: &mut TxContext){
+       let w = get_witness(witnessCarrier);
+       let idCap =   xcall::register_dapp(xcallState, w, ctx);
+       transfer::share_object(XcallCap {id: object::new(ctx), idCap: idCap});
+    }
+
+    fun get_witness(carrier: WitnessCarrier): REGISTER_WITNESS {
+        let WitnessCarrier { id, witness } = carrier;
+        id.delete();
+        witness
+    }
+
+    public(package) fun get_idcap(xcallIdCap: &XcallCap): &IDCap {
+        &xcallIdCap.idCap
+    }
+
+    public fun get_protocals(config: &Config):(vector<String>, vector<String>){
         (config.sources, config.destinations)
     }
 
-    entry fun proposeRemoval(_: &AdminCap, config: &mut Config, protocol: String) {
+    entry fun propose_removal(_: &AdminCap, config: &mut Config, protocol: String) {
         config.proposedProtocolToRemove = protocol;
     }
 
-    public fun handleCallMessage(
-        config: &Config,
-        from: String,
-        data: vector<vector<u8>>,
-        protocols: vector<String>,
-    
-    )  {
-        assert!(
-            from == config.iconGovernance,
-            OnlyICONBalancedgovernanceIsAllowed
-        );
+    entry public fun execute_call(xcallCap: &XcallCap, config: &mut Config, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+        // let verified = Self::verify_protocols(config, protocols);
+        // assert!(
+        //     verified,
+        //     ProtocolMismatch
+        // );
         
-        //string memory method = data.getMethod();
-        let mut method = CONFIGURE_PROTOCOLS_NAME; //read methdo from data
+        let ticket = xcall::execute_call(xcall, &xcallCap.idCap, request_id, data, ctx);
+        let msg = execute_ticket::message(&ticket);
+        let from = execute_ticket::from(&ticket);
 
-        if (!verifyProtocolsUnordered(&protocols, &config.sources)) {
-            assert!(
-                method == CONFIGURE_PROTOCOLS_NAME,
-                ProtocolMismatch
-            );
-            verifyProtocolRecovery(protocols, config);
-        };
-
-        method = EXECUTE_NAME;
+        let method: vector<u8> = configure_protocol::get_method(&msg);
         assert!(
-                method == CONFIGURE_PROTOCOLS_NAME || method == EXECUTE_NAME,
-                ProtocolMismatch
-            );
-        if (method == EXECUTE_NAME) {
-            // Messages.Execute memory message = data.decodeExecute();
-            // (bool _success, ) = message.contractAddress.call(message.data);
-            // require(_success, "Failed to excute message");
-        } else if (method == CONFIGURE_PROTOCOLS_NAME) {
-            // Messages.ConfigureProtocols memory message = data
-            //     .decodeConfigureProtocols();
-            // sources = message.sources;
-            // destinations = message.destinations;
+            method == CONFIGURE_PROTOCOLS_NAME || method == EXECUTE_METHOD_NAME,
+            UnknownMessageType
+        );
+
+        if (method == CONFIGURE_PROTOCOLS_NAME) {
+            assert!(from == network_address::from_string(config.iconGovernance), EIconAssetManagerRequired);
+            let message: ConfigureProtocol = configure_protocol::decode(&msg);
+            config.sources = configure_protocol::sources(&message);
+            config.destinations = configure_protocol::destinations(&message);
         };
+
+        xcall::execute_call_result(xcall,ticket,true,fee,ctx);
+        // } else if (method == EXECUTE_METHOD_NAME) {
+        //     let message: Execute = execute::decode(&msg);
+            
+        // };
+        
     }
+
+    // public fun handleCallMessage(
+    //     config: &Config,
+    //     from: String,
+    //     data: vector<vector<u8>>,
+    //     protocols: &vector<String>,
     
-    public fun verifyProtocols(
-       config: &Config, protocols: vector<String>
+    // )  {
+    //     assert!(
+    //         from == config.iconGovernance,
+    //         OnlyICONBalancedgovernanceIsAllowed
+    //     );
+        
+    //     //string memory method = data.getMethod();
+    //     let mut method = CONFIGURE_PROTOCOLS_NAME; 
+
+    //     if (!verify_protocols_unordered(protocols, &config.sources)) {
+    //         assert!(
+    //             method == CONFIGURE_PROTOCOLS_NAME,
+    //             ProtocolMismatch
+    //         );
+    //         verify_protocol_recovery(protocols, config);
+    //     };
+
+    //     method = EXECUTE_METHOD_NAME;
+    //     assert!(
+    //             method == CONFIGURE_PROTOCOLS_NAME || method == EXECUTE_METHOD_NAME,
+    //             ProtocolMismatch
+    //         );
+    //     if (method == EXECUTE_METHOD_NAME) {
+    //         // Messages.Execute memory message = data.decodeExecute();
+    //         // (bool _success, ) = message.contractAddress.call(message.data);
+    //         // require(_success, "Failed to excute message");
+    //     } else if (method == CONFIGURE_PROTOCOLS_NAME) {
+    //         // Messages.ConfigureProtocols memory message = data
+    //         //     .decodeConfigureProtocols();
+    //         // sources = message.sources;
+    //         // destinations = message.destinations;
+    //     };
+    // }
+
+    public fun verify_protocols(
+       config: &Config, protocols: &vector<String>
     ): bool {
-         verifyProtocolsUnordered(&protocols, &config.sources)
+        verify_protocol_recovery(protocols, config)
     }
 
-    fun verifyProtocolRecovery(protocols: vector<String>, config: &Config) {
+    fun verify_protocol_recovery(protocols: &vector<String>, config: &Config): bool {
         assert!(
-            verifyProtocolsUnordered(&getModifiedProtocols(config), &protocols),
+            verify_protocols_unordered(&get_modified_protocols(config), protocols),
             ProtocolMismatch
         );
+        true
     }
 
-    fun verifyProtocolsUnordered(
+    fun verify_protocols_unordered(
         array1: &vector<String>,
         array2: &vector<String>
     ):bool {
@@ -132,7 +200,7 @@ module balanced::xcall_manager{
         }
     }
 
-    public fun getModifiedProtocols(config: &Config): vector<String> {
+    public fun get_modified_protocols(config: &Config): vector<String> {
         assert!(config.proposedProtocolToRemove != string::utf8(b""), NoProposalForRemovalExists);
 
         let mut modifiedProtocols = vector::empty<String>();
@@ -149,20 +217,7 @@ module balanced::xcall_manager{
     }
 
     #[test_only]
-    public fun share_config_for_testing(iconGovernance: String, admin: address, sources: vector<String>, destinations: vector<String>, proposedProtocolToRemove: String, ctx: &mut TxContext  ) {
-         transfer::share_object(Config {
-            id: object::new(ctx),
-            iconGovernance: iconGovernance,
-            admin: admin,
-            sources: sources,
-            destinations: destinations,
-            proposedProtocolToRemove: proposedProtocolToRemove
-        });
-    }
-
-    #[test_only]
-    /// Wrapper of module initializer for testing
-    public fun test_init(ctx: &mut TxContext) {
+    public fun init_test(ctx: &mut TxContext) {
         init(ctx)
     }
 

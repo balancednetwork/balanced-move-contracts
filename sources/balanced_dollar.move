@@ -1,47 +1,35 @@
 module balanced::balanced_dollar {
-    use sui::object::{Self, UID};
-    use std::string::{Self, String};
-    use std::option::{Self, Option};
-    use std::debug;
+    use std::string::{String};
 
     use sui::url;
-    use sui::transfer;
     use sui::coin::{Self, Coin, TreasuryCap};
-    use sui::tx_context::{Self, TxContext};
     use sui::sui::SUI;
-    use sui::address::{Self};
-    use sui::balance::{Self};
-    use xcall::main::{Self};
-    use xcall::envelope::{Self};
 
-    use balanced::xcall_manager::{Self, Config as XcallManagerConfig};
+    use xcall::{main as xcall};
+    use xcall::xcall_state::{Storage as XCallState};
+    use xcall::envelope::{Self};
+    use xcall::network_address::{Self};
+    use xcall::execute_ticket::{Self};
+
+    use balanced::xcall_manager::{Self, Config as XcallManagerConfig, XcallCap};
+    use balanced::cross_transfer::{Self, wrap_cross_transfer, XCrossTransfer};
+    use balanced::cross_transfer_revert::{Self, wrap_cross_transfer_revert, XCrossTransferRevert};
+    use balanced::balanced_utils::{address_to_hex_string, address_from_hex_string};
+
+    const AmountLessThanMinimumAmount: u64  = 1;
+    //const ProtocolMismatch: u64 = 2;
+    const OnlyICONBnUSD: u64 = 3;
+    const UnknownMessageType: u64 = 5;
+    const ENotTransferredAmount: u64 = 6;
 
     const CROSS_TRANSFER: vector<u8> = b"xCrossTransfer";
     const CROSS_TRANSFER_REVERT: vector<u8> = b"xCrossTransferRevert";
 
-    const AmountLessThanMinimumAmount: u64  = 1;
-    const ProtocolMismatch: u64 = 2;
-    const OnlyICONBnUSD: u64 = 3;
-    const OnlyCallService: u64 = 4;
-    const UnknownMessageType: u64 = 5;
-    const ENotTransferredAmount: u64 = 6;
 
     public struct BALANCED_DOLLAR has drop {}
 
     public struct AdminCap has key{
         id: UID 
-    }
-
-    public struct XCrossTransfer has drop{
-        from: String, 
-        to: String,
-        value: u64,
-        data: vector<u8>
-    }
-
-    public struct XCrossTransferRevert has drop{
-        to: String,
-        value: u64
     }
 
     public struct Config has key, store{
@@ -82,89 +70,84 @@ module balanced::balanced_dollar {
     }
 
     entry fun crossTransfer(
+        xcallState: &mut XCallState,
         config: &Config,
         xcallManagerConfig: &XcallManagerConfig,
-        coin: Coin<SUI>,
+        xcallCap: &XcallCap,
+        fee: Coin<SUI>,
         token: Coin<BALANCED_DOLLAR>,
         treasury_cap: &mut TreasuryCap<BALANCED_DOLLAR>,
-        to: String,
+        to: address,
         amount: u64,
         data: Option<vector<u8>>,
         ctx: &mut TxContext
     ) {
         let messageData = option::get_with_default(&data, b"");
         assert!(amount > 0, AmountLessThanMinimumAmount);
-        debug::print(&coin::value(&token));
-        debug::print(&amount);
-        //assert!(coin::value(&token) == amount, ENotTransferredAmount);
+        assert!(coin::value(&token) == amount, ENotTransferredAmount);
         coin::burn(treasury_cap, token);
 
-        let mut from = config.xCallNetworkAddress;
-        string::append(&mut from, address::to_string(tx_context::sender(ctx)));
+        let sender = address_to_hex_string(&tx_context::sender(ctx));
+        let fromAddress = network_address::to_string(&network_address::create(config.xCallNetworkAddress, sender));
+        let string_to = address_to_hex_string(&to);
+        let toAddress = network_address::to_string(&network_address::create(config.xCallNetworkAddress, string_to));
 
-        let xcallMessage = XCrossTransfer {
-            from: from,
-            to: to,
-            value: amount,
-            data: messageData
-        };
-
-        let rollback = XCrossTransferRevert {
-            to: to,
-            value: amount
-        };
-
-        let (sources, destinations) = xcall_manager::getProtocals(xcallManagerConfig);
-
-        // xcall::sendCallMessage(
-        //     coin,
-        //     vars.iconBnUSD,
-        //     xcallMessage,
-        //     rollback,
-        //     sources,
-        //     destinations
-        // );
-        sendCallMessage(coin, config.iconBnUSD, xcallMessage, rollback, sources, destinations, ctx );
-    }
-
-    //todo: remove this method once xcall integrated
-    public fun sendCallMessage(coin: Coin<SUI>,  iconBnUSD: String, xcallMessage: XCrossTransfer, rollback: XCrossTransferRevert, sources: vector<String>, destinations: vector<String>, ctx: &mut TxContext){
-        debug::print(&iconBnUSD);
-        debug::print(&xcallMessage);
-        debug::print(&rollback);
-        debug::print(&sources);
-        debug::print(&destinations);
-
-        transfer::public_transfer(coin, tx_context::sender(ctx));
-    }
-
-    public fun handleCallMessage(
-        config: &Config,
-        xcallManagerConfig: &XcallManagerConfig,
-        from: String,
-        data: vector<u8>,
-        protocols: vector<String>
-    ) {
-        let verified = xcall_manager::verifyProtocols(xcallManagerConfig, protocols);
-        assert!(
-            verified,
-            ProtocolMismatch
+        let xcallMessageStruct = wrap_cross_transfer(
+            fromAddress,
+           toAddress,
+             amount,
+            messageData
         );
 
-        //string memory method = data.getMethod();
-        let method = CROSS_TRANSFER;
+        let rollbackStruct = wrap_cross_transfer_revert(
+            to,
+            amount
+        );
 
-        assert!(method == CROSS_TRANSFER || method == CROSS_TRANSFER_REVERT, UnknownMessageType);
+        let (sources, destinations) = xcall_manager::get_protocals(xcallManagerConfig);
+        let idcap = xcall_manager::get_idcap(xcallCap);
+
+        let xcallMessage = cross_transfer::encode(&xcallMessageStruct, CROSS_TRANSFER);
+        let rollback = cross_transfer_revert::encode(&rollbackStruct, CROSS_TRANSFER_REVERT);
+        
+        let envelope = envelope::wrap_call_message_rollback(xcallMessage, rollback, sources, destinations);
+        xcall::send_call(xcallState, fee, idcap, config.iconBnUSD, envelope::encode(&envelope), ctx);
+    }
+
+    entry public fun execute_call<BALANCED_DOLLAR>(cap: &mut TreasuryCap<BALANCED_DOLLAR>, xcallCap: &XcallCap, config: &Config, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+        // let verified = xcall_manager::verify_protocols(xcallManagerConfig, protocols);
+        // assert!(
+        //     verified,
+        //     ProtocolMismatch
+        // );
+        let idcap = xcall_manager::get_idcap(xcallCap);
+        let ticket = xcall::execute_call(xcall, idcap, request_id, data, ctx);
+        let msg = execute_ticket::message(&ticket);
+        let from = execute_ticket::from(&ticket);
+
+        let method: vector<u8> = cross_transfer::get_method(&msg);
+        assert!(
+            method == CROSS_TRANSFER || method == CROSS_TRANSFER_REVERT, 
+            UnknownMessageType
+        );
+
         if (method == CROSS_TRANSFER) {
-            assert!(from == config.iconBnUSD, OnlyICONBnUSD);
-            // Messages.XCrossTransfer memory message = data.decodeCrossTransfer(); 
-            // (,string memory to) = message.to.parseNetworkAddress();
-            // _mint(to.parseAddress("Invalid account"), message.value);
+            assert!(from == network_address::from_string(config.iconBnUSD), OnlyICONBnUSD);
+            let message: XCrossTransfer = cross_transfer::decode(&msg);
+            let string_to = network_address::addr(&network_address::from_string(cross_transfer::to(&message)));
+            let to = address_from_hex_string(&string_to);
+            let amount: u64 = cross_transfer::value(&message);
+
+            coin::mint_and_transfer(cap,  amount, to, ctx)
         } else if (method == CROSS_TRANSFER_REVERT) {
-            assert!(from == config.xCallNetworkAddress, OnlyCallService);
-            //Messages.XCrossTransferRevert memory message = data.decodeCrossTransferRevert();
-            //_mint(message.to, message.value);
-        } 
+            let message: XCrossTransferRevert = cross_transfer_revert::decode(&msg);
+            let to = cross_transfer_revert::to(&message);
+            let amount: u64 = cross_transfer_revert::value(&message);
+
+            coin::mint_and_transfer(cap,  amount, to, ctx)
+        };
+
+        xcall::execute_call_result(xcall,ticket,true,fee,ctx);
     }
 
     #[test_only]

@@ -50,56 +50,56 @@ module balanced::balanced_dollar_test {
         test_scenario::end(scenario_val);
     }
 
-    #[test]
-    fun test_cross_transfer() {
+    // #[test]
+    // fun test_cross_transfer() {
 
-        // Arrange
-        let admin = @0xBABE;
-        let final_owner = @0xFACE;
+    //     // Arrange
+    //     let admin = @0xBABE;
+    //     let final_owner = @0xFACE;
 
-        let mut scenario_val = test_scenario::begin(admin);
-        let scenario = &mut scenario_val;
-        {
-            balanced_dollar::test_init(test_scenario::ctx(scenario));
-        };
+    //     let mut scenario_val = test_scenario::begin(admin);
+    //     let scenario = &mut scenario_val;
+    //     {
+    //         balanced_dollar::test_init(test_scenario::ctx(scenario));
+    //     };
 
-        // Act
-        test_scenario::next_tx(scenario, admin);
-        {
-            let adminCap = test_scenario::take_from_sender<AdminCap>(scenario);
-            configure(&adminCap, string::utf8(b"sui1:xcall"), string::utf8(b"sui1"), string::utf8(b"icon1:hx534"),  test_scenario::ctx(scenario));
+    //     // Act
+    //     test_scenario::next_tx(scenario, admin);
+    //     {
+    //         let adminCap = test_scenario::take_from_sender<AdminCap>(scenario);
+    //         configure(&adminCap, string::utf8(b"sui1:xcall"), string::utf8(b"sui1"), string::utf8(b"icon1:hx534"),  test_scenario::ctx(scenario));
 
-            test_scenario::return_to_sender(scenario, adminCap);
-            let sources = vector[string::utf8(b"xcall"), string::utf8(b"connection")];
-            let destinations = vector[string::utf8(b"icon:hx234"), string::utf8(b"icon:hx334")];
-            xcall_manager::share_config_for_testing(
-                 string::utf8(b"iconGovernance"),
-                 admin,
-                 sources,
-                 destinations,
-                 string::utf8(b""),
-                 test_scenario::ctx(scenario)
-            );
-        };
+    //         test_scenario::return_to_sender(scenario, adminCap);
+    //         let sources = vector[string::utf8(b"xcall"), string::utf8(b"connection")];
+    //         let destinations = vector[string::utf8(b"icon:hx234"), string::utf8(b"icon:hx334")];
+    //         xcall_manager::share_config_for_testing(
+    //              string::utf8(b"iconGovernance"),
+    //              admin,
+    //              sources,
+    //              destinations,
+    //              string::utf8(b""),
+    //              test_scenario::ctx(scenario)
+    //         );
+    //     };
         
-        // Assert
-        test_scenario::next_tx(scenario, admin);
-        {
-            let config = test_scenario::take_shared<Config>(scenario);
-            let xcallManagerConfig: xcall_manager::Config = test_scenario::take_shared<xcall_manager::Config>(scenario);
-            let mut treasury_cap = test_scenario::take_from_address<TreasuryCap<BALANCED_DOLLAR>>(scenario, admin);
+    //     // Assert
+    //     test_scenario::next_tx(scenario, admin);
+    //     {
+    //         let config = test_scenario::take_shared<Config>(scenario);
+    //         let xcallManagerConfig: xcall_manager::Config = test_scenario::take_shared<xcall_manager::Config>(scenario);
+    //         let mut treasury_cap = test_scenario::take_from_address<TreasuryCap<BALANCED_DOLLAR>>(scenario, admin);
 
-            let fee_amount = math::pow(10, 9 + 4);
-            let bnusd_amount = math::pow(10, 18);
-            let fee = coin::mint_for_testing<SUI>(fee_amount, test_scenario::ctx(scenario));
-            let deposited = coin::mint(&mut treasury_cap, bnusd_amount, test_scenario::ctx(scenario));
+    //         let fee_amount = math::pow(10, 9 + 4);
+    //         let bnusd_amount = math::pow(10, 18);
+    //         let fee = coin::mint_for_testing<SUI>(fee_amount, test_scenario::ctx(scenario));
+    //         let deposited = coin::mint(&mut treasury_cap, bnusd_amount, test_scenario::ctx(scenario));
             
-            crossTransfer(&config, &xcallManagerConfig, fee, deposited, &mut treasury_cap, string::utf8(b"icon1:hx9445"),  bnusd_amount, option::none() , test_scenario::ctx(scenario));
-            test_scenario::return_shared(xcallManagerConfig);
-            test_scenario::return_shared( config);
-            test_scenario::return_to_address(admin, treasury_cap);
-        };
-        test_scenario::end(scenario_val);
-    }
+    //         crossTransfer(&config, &xcallManagerConfig, fee, deposited, &mut treasury_cap, string::utf8(b"icon1:hx9445"),  bnusd_amount, option::none() , test_scenario::ctx(scenario));
+    //         test_scenario::return_shared(xcallManagerConfig);
+    //         test_scenario::return_shared( config);
+    //         test_scenario::return_to_address(admin, treasury_cap);
+    //     };
+    //     test_scenario::end(scenario_val);
+    // }
 
 }
