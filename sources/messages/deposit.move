@@ -61,7 +61,7 @@ module balanced::deposit {
         method
     }
 
-    public fun get_token_address(bytes:&vector<u8>): String{
+    public fun get_token_type(bytes:&vector<u8>): String{
         let decoded=decoder::decode_list(bytes);
         let token_address = decoder::decode_string(vector::borrow(&decoded, 1));
         token_address

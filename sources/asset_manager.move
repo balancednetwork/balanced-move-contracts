@@ -7,6 +7,7 @@ module balanced::asset_manager{
     use sui::balance::{Self, Balance};
     use sui::sui::SUI;
     use sui::clock::{Self, Clock};
+    use sui::bag::{Self, Bag};
 
     use xcall::{main as xcall};
     use xcall::xcall_state::{Storage as XCallState};
@@ -30,7 +31,7 @@ module balanced::asset_manager{
     const EAmountLessThanMinimumAmount: u64 = 0;
     const ENotDepositedAmount: u64 = 1;
     const EWithdrawTooLarge: u64 = 2;
-    //const ProtocolMismatch: u64 = 3;
+    const ProtocolMismatch: u64 = 3;
     const UnknownMessageType: u64 = 4;
     const EZeroAmountRequired: u64 = 5;
     const EExceedsWithdrawLimit: u64 = 6;
@@ -41,18 +42,19 @@ module balanced::asset_manager{
         balance: Balance<T>
     }
 
-    public struct Config has key{
+    public struct Config has key {
         id: UID, 
-        xCallNetworkAddress: String,
-        iconAssetManager: String
+        xcall_network_address: String,
+        icon_asset_manager: String
     }
+    
 
     public struct RateLimit<phantom T> has key {
         id: UID,
         period: u64,
         percentage: u64,
-        lastUpdate: u64,
-        currentLimit: u64
+        last_update: u64,
+        current_limit: u64
     }
 
     public struct AdminCap has key {
@@ -67,22 +69,25 @@ module balanced::asset_manager{
 
     }
 
-    entry fun configure(_: &AdminCap, _iconAssetManager: String, _xCallNetworkAddress: String, ctx: &mut TxContext ) {
+    entry fun configure(_: &AdminCap, icon_asset_manager: String, xcall_network_address: String, ctx: &mut TxContext ) {
         transfer::share_object(Config {
             id: object::new(ctx),
-            iconAssetManager: _iconAssetManager,
-            xCallNetworkAddress: _xCallNetworkAddress
+            icon_asset_manager: icon_asset_manager,
+            xcall_network_address: xcall_network_address
         });
     }
 
-    entry fun register_token<T>(token: Coin<T>, ctx: &mut TxContext ) {
+    entry fun register_token<T>(token: Coin<T>, assets:&mut Bag,  ctx: &mut TxContext) {
        assert!(coin::value(&token)==0, EZeroAmountRequired);
-       let mut assetManager = AssetManager<T> {
+       let mut asset_manager = AssetManager<T> {
             id: object::new(ctx),
             balance: balance::zero<T>()
         };
-        coin::put<T>(&mut assetManager.balance, token);
-        transfer::share_object(assetManager);
+        coin::put<T>(&mut asset_manager.balance, token);
+        let token_type = string::from_ascii(*type_name::borrow_string(&type_name::get<T>()));
+        bag::add(assets, token_type, asset_manager);
+        //transfer::share_object(assetManager);
+        
     }
 
     entry fun configure_rate_limit<T: key+store> (
@@ -97,8 +102,8 @@ module balanced::asset_manager{
             id: object::new(ctx),
             period: period,
             percentage: percentage,
-            lastUpdate: clock::timestamp_ms(c),
-            currentLimit: (balance::value(&self.balance) * percentage) / POINTS
+            last_update: clock::timestamp_ms(c),
+            current_limit: (balance::value(&self.balance) * percentage) / POINTS
         });
     }
 
@@ -108,7 +113,7 @@ module balanced::asset_manager{
         rateLimit: &mut RateLimit<T>
     ) 
     {
-        rateLimit.currentLimit = (balance::value(&self.balance) *rateLimit.percentage) / POINTS
+        rateLimit.current_limit = (balance::value(&self.balance) *rateLimit.percentage) / POINTS
     }
 
     public fun get_withdraw_limit<T>(self: &AssetManager<T>,
@@ -126,11 +131,11 @@ module balanced::asset_manager{
 
         let maxLimit = (tokenBalance * percentage) / POINTS;
         let maxWithdraw = tokenBalance - maxLimit;
-        let mut timeDiff = clock::timestamp_ms(c) - rateLimit.lastUpdate;
+        let mut timeDiff = clock::timestamp_ms(c) - rateLimit.last_update;
         timeDiff = if(timeDiff > period){ period } else { timeDiff };
 
         let addedAllowedWithdrawal = (maxWithdraw * timeDiff) / period;
-        let mut limit = rateLimit.currentLimit - addedAllowedWithdrawal;
+        let mut limit = rateLimit.current_limit - addedAllowedWithdrawal;
         limit = if(tokenBalance > limit){ limit } else { tokenBalance };
         limit = if(limit > maxLimit){ limit } else { maxLimit };
         limit
@@ -141,30 +146,30 @@ module balanced::asset_manager{
         let limit = calculate_limit(tokenBalance, rateLimit, c);
         assert!(tokenBalance - amount >= limit, EExceedsWithdrawLimit );
 
-        rateLimit.currentLimit = limit;
-        rateLimit.lastUpdate = clock::timestamp_ms(c);
+        rateLimit.current_limit = limit;
+        rateLimit.last_update = clock::timestamp_ms(c);
     }
 
     public entry fun deposit<T>(
-            self: &mut AssetManager<T>, 
-            xcallState: &mut XCallState, 
-            xcallCap: &XcallCap, 
-            config: &Config, 
-            xcallManagerConfig: &XcallManagerConfig, 
-            fee: Coin<SUI>,
-            token: Coin<T>, 
-            amount: u64, 
-            to: Option<address>, 
-            data: Option<vector<u8>>, 
-            ctx: &mut TxContext
-        ) {
+        self: &mut AssetManager<T>,
+        xcallState: &mut XCallState, 
+        xcallCap: &XcallCap, 
+        config: &Config, 
+        xcallManagerConfig: &XcallManagerConfig, 
+        fee: Coin<SUI>,
+        token: Coin<T>, 
+        amount: u64, 
+        to: Option<address>, 
+        data: Option<vector<u8>>, 
+        ctx: &mut TxContext
+    ) {
         let sender = tx_context::sender(ctx);
         let string_from = address_to_hex_string(&tx_context::sender(ctx));
-        let from_address = network_address::to_string(&network_address::create(config.xCallNetworkAddress, string_from));
+        let from_address = network_address::to_string(&network_address::create(config.xcall_network_address, string_from));
         let mut to_address = from_address;
         if(option::is_some(&to)){
             let string_to = address_to_hex_string(option::borrow(&to));
-            to_address = network_address::to_string(&network_address::create(config.xCallNetworkAddress, string_to));
+            to_address = network_address::to_string(&network_address::create(config.xcall_network_address, string_to));
         };
 
         let messageData = option::get_with_default(&data, b"");
@@ -194,42 +199,39 @@ module balanced::asset_manager{
        let(sources, destinations) = xcall_manager::get_protocals(xcallManagerConfig); 
        let idcap = xcall_manager::get_idcap(xcallCap);
        let envelope = envelope::wrap_call_message_rollback(data, rollback, sources, destinations);
-       xcall::send_call(xcallState, fee, idcap, config.iconAssetManager, envelope::encode(&envelope), ctx);
+       xcall::send_call(xcallState, fee, idcap, config.icon_asset_manager, envelope::encode(&envelope), ctx);
     }
 
-    // use this after discussion with Sabin 
-    // public fun get_withdraw_token_symbol(xcallCap: &XcallCap, xcall:&mut XCallState, request_id:u128, data:vector<u8>, ctx:&mut TxContext): String{
-    //     let idcap = xcall_manager::get_idcap(xcallCap);
-    //     let ticket = xcall::execute_call(xcall, idcap, request_id, data, ctx);
-    //     let msg = execute_ticket::message(&ticket);
-    //     //xcall::execute_call_result(xcall,ticket,false,fee,ctx);
-    //     let token_address: String = deposit::get_token_address(&msg);
-    //     token_address
-    // }
+    public fun get_withdraw_token_type(msg:vector<u8>): String{
+        deposit::get_token_type(&msg)
+    }
 
-    entry public fun execute_call<T>(self: &mut AssetManager<T>, xcallCap: &XcallCap, config: &Config, xcall:&mut XCallState, fee:Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
-        // let verified = xcall_manager::verify_protocols(xcallManagerConfig, protocols);
-        // assert!(
-        //     verified,
-        //     ProtocolMismatch
-        // );
-        
-        let idcap = xcall_manager::get_idcap(xcallCap);
+    entry public fun execute_call<T>(assets: &mut Bag, xcall_cap: &XcallCap, config: &Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee:Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+        let idcap = xcall_manager::get_idcap(xcall_cap);
         let ticket = xcall::execute_call(xcall, idcap, request_id, data, ctx);
         let msg = execute_ticket::message(&ticket);
         let from = execute_ticket::from(&ticket);
+        let protocols = execute_ticket::protocols(&ticket);
+
+        let verified = xcall_manager::verify_protocols(xcall_manager_config, &protocols);
+        assert!(
+            verified,
+            ProtocolMismatch
+        );
 
         let method: vector<u8> = deposit::get_method(&msg);
         assert!(
             method == WITHDRAW_TO_NAME || method == WITHDRAW_NATIVE_TO_NAME || method == DEPOSIT_REVERT_NAME,
             UnknownMessageType
         );
+        
+        let token_type = string::from_ascii(*type_name::borrow_string(&type_name::get<T>()));
+        let self = bag::borrow_mut<String, AssetManager<T>>(assets, token_type);
+        let message_token_type = deposit::get_token_type(&msg);
 
-        let token_address = deposit::get_token_address(&msg);
-        let coin_token_ddress = string::from_ascii(type_name::get_address(&type_name::get<T>()));
-        if(token_address == coin_token_ddress){
+        if(token_type == message_token_type){
             if (method == WITHDRAW_TO_NAME || method == WITHDRAW_NATIVE_TO_NAME) {
-                assert!(from == network_address::from_string(config.iconAssetManager), EIconAssetManagerRequired);
+                assert!(from == network_address::from_string(config.icon_asset_manager), EIconAssetManagerRequired);
                 let message: WithdrawTo = withdraw_to::decode(&msg);
                 let to_address = network_address::addr(&network_address::from_string(withdraw_to::to(&message)));
                 withdraw(

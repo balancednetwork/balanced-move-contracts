@@ -94,15 +94,16 @@ module balanced::xcall_manager{
     }
 
     entry public fun execute_call(xcallCap: &XcallCap, config: &mut Config, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
-        // let verified = Self::verify_protocols(config, protocols);
-        // assert!(
-        //     verified,
-        //     ProtocolMismatch
-        // );
-        
         let ticket = xcall::execute_call(xcall, &xcallCap.idCap, request_id, data, ctx);
         let msg = execute_ticket::message(&ticket);
         let from = execute_ticket::from(&ticket);
+        let protocols = execute_ticket::protocols(&ticket);
+
+        let verified = Self::verify_protocols(config, &protocols);
+        assert!(
+            verified,
+            ProtocolMismatch
+        );
 
         let method: vector<u8> = configure_protocol::get_method(&msg);
         assert!(
@@ -115,55 +116,11 @@ module balanced::xcall_manager{
             let message: ConfigureProtocol = configure_protocol::decode(&msg);
             config.sources = configure_protocol::sources(&message);
             config.destinations = configure_protocol::destinations(&message);
-        };
-
-        xcall::execute_call_result(xcall,ticket,true,fee,ctx);
-        // } else if (method == EXECUTE_METHOD_NAME) {
-        //     let message: Execute = execute::decode(&msg);
-            
-        // };
-        
+            xcall::execute_call_result(xcall,ticket,true,fee,ctx)
+        } else {
+            xcall::execute_call_result(xcall,ticket,false,fee,ctx)
+        }
     }
-
-    // public fun handleCallMessage(
-    //     config: &Config,
-    //     from: String,
-    //     data: vector<vector<u8>>,
-    //     protocols: &vector<String>,
-    
-    // )  {
-    //     assert!(
-    //         from == config.iconGovernance,
-    //         OnlyICONBalancedgovernanceIsAllowed
-    //     );
-        
-    //     //string memory method = data.getMethod();
-    //     let mut method = CONFIGURE_PROTOCOLS_NAME; 
-
-    //     if (!verify_protocols_unordered(protocols, &config.sources)) {
-    //         assert!(
-    //             method == CONFIGURE_PROTOCOLS_NAME,
-    //             ProtocolMismatch
-    //         );
-    //         verify_protocol_recovery(protocols, config);
-    //     };
-
-    //     method = EXECUTE_METHOD_NAME;
-    //     assert!(
-    //             method == CONFIGURE_PROTOCOLS_NAME || method == EXECUTE_METHOD_NAME,
-    //             ProtocolMismatch
-    //         );
-    //     if (method == EXECUTE_METHOD_NAME) {
-    //         // Messages.Execute memory message = data.decodeExecute();
-    //         // (bool _success, ) = message.contractAddress.call(message.data);
-    //         // require(_success, "Failed to excute message");
-    //     } else if (method == CONFIGURE_PROTOCOLS_NAME) {
-    //         // Messages.ConfigureProtocols memory message = data
-    //         //     .decodeConfigureProtocols();
-    //         // sources = message.sources;
-    //         // destinations = message.destinations;
-    //     };
-    // }
 
     public fun verify_protocols(
        config: &Config, protocols: &vector<String>

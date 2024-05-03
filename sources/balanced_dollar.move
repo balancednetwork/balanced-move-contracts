@@ -17,7 +17,7 @@ module balanced::balanced_dollar {
     use balanced::balanced_utils::{address_to_hex_string, address_from_hex_string};
 
     const AmountLessThanMinimumAmount: u64  = 1;
-    //const ProtocolMismatch: u64 = 2;
+    const ProtocolMismatch: u64 = 2;
     const OnlyICONBnUSD: u64 = 3;
     const UnknownMessageType: u64 = 5;
     const ENotTransferredAmount: u64 = 6;
@@ -114,16 +114,18 @@ module balanced::balanced_dollar {
         xcall::send_call(xcallState, fee, idcap, config.iconBnUSD, envelope::encode(&envelope), ctx);
     }
 
-    entry public fun execute_call<BALANCED_DOLLAR>(cap: &mut TreasuryCap<BALANCED_DOLLAR>, xcallCap: &XcallCap, config: &Config, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
-        // let verified = xcall_manager::verify_protocols(xcallManagerConfig, protocols);
-        // assert!(
-        //     verified,
-        //     ProtocolMismatch
-        // );
+    entry public fun execute_call<BALANCED_DOLLAR>(cap: &mut TreasuryCap<BALANCED_DOLLAR>, xcallCap: &XcallCap, config: &Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
         let idcap = xcall_manager::get_idcap(xcallCap);
         let ticket = xcall::execute_call(xcall, idcap, request_id, data, ctx);
         let msg = execute_ticket::message(&ticket);
         let from = execute_ticket::from(&ticket);
+        let protocols = execute_ticket::protocols(&ticket);
+
+        let verified = xcall_manager::verify_protocols(xcall_manager_config, &protocols);
+        assert!(
+            verified,
+            ProtocolMismatch
+        );
 
         let method: vector<u8> = cross_transfer::get_method(&msg);
         assert!(
