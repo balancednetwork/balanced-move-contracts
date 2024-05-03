@@ -1,7 +1,5 @@
-#[allow(unused_const)]
 module balanced::xcall_manager{
     use std::string::{Self, String};
-
     use sui::coin::{Coin};
     use sui::sui::{SUI};
 
@@ -14,9 +12,8 @@ module balanced::xcall_manager{
 
     const NoProposalForRemovalExists: u64 = 0;
     const ProtocolMismatch: u64 = 1;
-    const OnlyICONBalancedgovernanceIsAllowed: u64 = 2;
-    const UnknownMessageType: u64 = 3;
-    const EIconAssetManagerRequired: u64 = 4;
+    const UnknownMessageType: u64 = 2;
+    const EIconAssetManagerRequired: u64 = 3;
 
     const EXECUTE_METHOD_NAME: vector<u8> = b"Execute";
     const CONFIGURE_PROTOCOLS_NAME: vector<u8> = b"ConfigureProtocols";
@@ -27,11 +24,11 @@ module balanced::xcall_manager{
 
     public struct Config has key, store {
         id: UID, 
-        iconGovernance: String,
+        icon_governance: String,
         admin: address,
         sources: vector<String>,
         destinations: vector<String>,
-        proposedProtocolToRemove: String
+        proposed_protocol_to_remove: String
     }
 
     public struct XcallCap has key {
@@ -58,20 +55,20 @@ module balanced::xcall_manager{
         );
     }
 
-    entry fun configure(_: &AdminCap, _iconGovernance: String,  _admin: address, _sources: vector<String>, _destinations: vector<String>, ctx: &mut TxContext ){
+    entry fun configure(_: &AdminCap, icon_governance: String,  admin: address, sources: vector<String>, destinations: vector<String>, ctx: &mut TxContext ){
         transfer::share_object(Config {
             id: object::new(ctx),
-            iconGovernance: _iconGovernance,
-            admin: _admin,
-            sources: _sources,
-            destinations: _destinations,
-            proposedProtocolToRemove: string::utf8(b"")
+            icon_governance: icon_governance,
+            admin: admin,
+            sources: sources,
+            destinations: destinations,
+            proposed_protocol_to_remove: string::utf8(b"")
         });
     }
 
-    public fun register_xcall(xcallState: &XCallState, witnessCarrier: WitnessCarrier, ctx: &mut TxContext){
-       let w = get_witness(witnessCarrier);
-       let idCap =   xcall::register_dapp(xcallState, w, ctx);
+    public fun register_xcall(xcall_state: &XCallState, witness_carrier: WitnessCarrier, ctx: &mut TxContext){
+       let w = get_witness(witness_carrier);
+       let idCap =   xcall::register_dapp(xcall_state, w, ctx);
        transfer::share_object(XcallCap {id: object::new(ctx), idCap: idCap});
     }
 
@@ -90,11 +87,11 @@ module balanced::xcall_manager{
     }
 
     entry fun propose_removal(_: &AdminCap, config: &mut Config, protocol: String) {
-        config.proposedProtocolToRemove = protocol;
+        config.proposed_protocol_to_remove = protocol;
     }
 
-    entry public fun execute_call(xcallCap: &XcallCap, config: &mut Config, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
-        let ticket = xcall::execute_call(xcall, &xcallCap.idCap, request_id, data, ctx);
+    entry public fun execute_call(xcall_cap: &XcallCap, config: &mut Config, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+        let ticket = xcall::execute_call(xcall, &xcall_cap.idCap, request_id, data, ctx);
         let msg = execute_ticket::message(&ticket);
         let from = execute_ticket::from(&ticket);
         let protocols = execute_ticket::protocols(&ticket);
@@ -112,7 +109,7 @@ module balanced::xcall_manager{
         );
 
         if (method == CONFIGURE_PROTOCOLS_NAME) {
-            assert!(from == network_address::from_string(config.iconGovernance), EIconAssetManagerRequired);
+            assert!(from == network_address::from_string(config.icon_governance), EIconAssetManagerRequired);
             let message: ConfigureProtocol = configure_protocol::decode(&msg);
             config.sources = configure_protocol::sources(&message);
             config.destinations = configure_protocol::destinations(&message);
@@ -158,14 +155,14 @@ module balanced::xcall_manager{
     }
 
     public fun get_modified_protocols(config: &Config): vector<String> {
-        assert!(config.proposedProtocolToRemove != string::utf8(b""), NoProposalForRemovalExists);
+        assert!(config.proposed_protocol_to_remove != string::utf8(b""), NoProposalForRemovalExists);
 
         let mut modifiedProtocols = vector::empty<String>();
         let sourceLen = vector::length(&config.sources);
         let mut i = 0;
         while(i < sourceLen) {
             let protocol = *vector::borrow(&config.sources, i);
-            if(config.proposedProtocolToRemove != protocol){
+            if(config.proposed_protocol_to_remove != protocol){
                 vector::push_back(&mut modifiedProtocols, protocol);
             };
             i = i+1;

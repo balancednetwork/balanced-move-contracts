@@ -1,6 +1,5 @@
 module balanced::balanced_dollar {
     use std::string::{String};
-
     use sui::url;
     use sui::coin::{Self, Coin, TreasuryCap};
     use sui::sui::SUI;
@@ -19,8 +18,8 @@ module balanced::balanced_dollar {
     const AmountLessThanMinimumAmount: u64  = 1;
     const ProtocolMismatch: u64 = 2;
     const OnlyICONBnUSD: u64 = 3;
-    const UnknownMessageType: u64 = 5;
-    const ENotTransferredAmount: u64 = 6;
+    const UnknownMessageType: u64 = 4;
+    const ENotTransferredAmount: u64 = 5;
 
     const CROSS_TRANSFER: vector<u8> = b"xCrossTransfer";
     const CROSS_TRANSFER_REVERT: vector<u8> = b"xCrossTransferRevert";
@@ -34,11 +33,12 @@ module balanced::balanced_dollar {
 
     public struct Config has key, store{
         id: UID, 
-        xCallNetworkAddress: String,
+        xcall_network_address: String,
         nid: String,
-        iconBnUSD: String,
+        icon_bnusd: String,
     }
 
+    #[allow(lint(share_owned))]
     fun init(witness: BALANCED_DOLLAR, ctx: &mut TxContext) {
         let (treasury_cap, metadata) = coin::create_currency<BALANCED_DOLLAR>(
             witness, 
@@ -60,20 +60,20 @@ module balanced::balanced_dollar {
         
     }
 
-    entry fun configure(_: &AdminCap, _xCallNetworkAddress: String, _nid: String, _iconBnUSD: String, ctx: &mut TxContext ){
+    entry fun configure(_: &AdminCap, xcall_network_address: String, nid: String, icon_bnusd: String, ctx: &mut TxContext ){
         transfer::share_object(Config {
             id: object::new(ctx),
-            xCallNetworkAddress: _xCallNetworkAddress,
-            nid: _nid,
-            iconBnUSD: _iconBnUSD
+            xcall_network_address: xcall_network_address,
+            nid: nid,
+            icon_bnusd: icon_bnusd
         });
     }
 
     entry fun crossTransfer(
-        xcallState: &mut XCallState,
+        xcall_state: &mut XCallState,
         config: &Config,
-        xcallManagerConfig: &XcallManagerConfig,
-        xcallCap: &XcallCap,
+        xcall_manager_config: &XcallManagerConfig,
+        xcall_cap: &XcallCap,
         fee: Coin<SUI>,
         token: Coin<BALANCED_DOLLAR>,
         treasury_cap: &mut TreasuryCap<BALANCED_DOLLAR>,
@@ -88,9 +88,9 @@ module balanced::balanced_dollar {
         coin::burn(treasury_cap, token);
 
         let sender = address_to_hex_string(&tx_context::sender(ctx));
-        let fromAddress = network_address::to_string(&network_address::create(config.xCallNetworkAddress, sender));
+        let fromAddress = network_address::to_string(&network_address::create(config.xcall_network_address, sender));
         let string_to = address_to_hex_string(&to);
-        let toAddress = network_address::to_string(&network_address::create(config.xCallNetworkAddress, string_to));
+        let toAddress = network_address::to_string(&network_address::create(config.xcall_network_address, string_to));
 
         let xcallMessageStruct = wrap_cross_transfer(
             fromAddress,
@@ -104,18 +104,18 @@ module balanced::balanced_dollar {
             amount
         );
 
-        let (sources, destinations) = xcall_manager::get_protocals(xcallManagerConfig);
-        let idcap = xcall_manager::get_idcap(xcallCap);
+        let (sources, destinations) = xcall_manager::get_protocals(xcall_manager_config);
+        let idcap = xcall_manager::get_idcap(xcall_cap);
 
         let xcallMessage = cross_transfer::encode(&xcallMessageStruct, CROSS_TRANSFER);
         let rollback = cross_transfer_revert::encode(&rollbackStruct, CROSS_TRANSFER_REVERT);
         
         let envelope = envelope::wrap_call_message_rollback(xcallMessage, rollback, sources, destinations);
-        xcall::send_call(xcallState, fee, idcap, config.iconBnUSD, envelope::encode(&envelope), ctx);
+        xcall::send_call(xcall_state, fee, idcap, config.icon_bnusd, envelope::encode(&envelope), ctx);
     }
 
-    entry public fun execute_call<BALANCED_DOLLAR>(cap: &mut TreasuryCap<BALANCED_DOLLAR>, xcallCap: &XcallCap, config: &Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
-        let idcap = xcall_manager::get_idcap(xcallCap);
+    entry public fun execute_call<BALANCED_DOLLAR>(cap: &mut TreasuryCap<BALANCED_DOLLAR>, xcall_cap: &XcallCap, config: &Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+        let idcap = xcall_manager::get_idcap(xcall_cap);
         let ticket = xcall::execute_call(xcall, idcap, request_id, data, ctx);
         let msg = execute_ticket::message(&ticket);
         let from = execute_ticket::from(&ticket);
@@ -134,7 +134,7 @@ module balanced::balanced_dollar {
         );
 
         if (method == CROSS_TRANSFER) {
-            assert!(from == network_address::from_string(config.iconBnUSD), OnlyICONBnUSD);
+            assert!(from == network_address::from_string(config.icon_bnusd), OnlyICONBnUSD);
             let message: XCrossTransfer = cross_transfer::decode(&msg);
             let string_to = network_address::addr(&network_address::from_string(cross_transfer::to(&message)));
             let to = address_from_hex_string(&string_to);

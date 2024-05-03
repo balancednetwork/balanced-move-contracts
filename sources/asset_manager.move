@@ -1,8 +1,6 @@
-#[allow(unused_const)]
 module balanced::asset_manager{
     use std::string::{Self, String};
     use std::type_name::{Self};
-    
     use sui::coin::{Self, Coin};
     use sui::balance::{Self, Balance};
     use sui::sui::SUI;
@@ -30,12 +28,11 @@ module balanced::asset_manager{
 
     const EAmountLessThanMinimumAmount: u64 = 0;
     const ENotDepositedAmount: u64 = 1;
-    const EWithdrawTooLarge: u64 = 2;
-    const ProtocolMismatch: u64 = 3;
-    const UnknownMessageType: u64 = 4;
-    const EZeroAmountRequired: u64 = 5;
-    const EExceedsWithdrawLimit: u64 = 6;
-    const EIconAssetManagerRequired: u64 = 7;
+    const ProtocolMismatch: u64 = 2;
+    const UnknownMessageType: u64 = 3;
+    const EZeroAmountRequired: u64 = 4;
+    const EExceedsWithdrawLimit: u64 = 5;
+    const EIconAssetManagerRequired: u64 = 6;
     
     public struct AssetManager<phantom T> has key, store{
         id: UID,
