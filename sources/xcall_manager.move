@@ -12,10 +12,10 @@ module balanced::xcall_manager{
 
     const NoProposalForRemovalExists: u64 = 0;
     const ProtocolMismatch: u64 = 1;
-    const UnknownMessageType: u64 = 2;
+    //const UnknownMessageType: u64 = 2;
     const EIconAssetManagerRequired: u64 = 3;
 
-    const EXECUTE_METHOD_NAME: vector<u8> = b"Execute";
+    //const EXECUTE_METHOD_NAME: vector<u8> = b"Execute";
     const CONFIGURE_PROTOCOLS_NAME: vector<u8> = b"ConfigureProtocols";
 
     public struct REGISTER_WITNESS has drop, store {}
@@ -37,10 +37,6 @@ module balanced::xcall_manager{
     }
 
     public struct AdminCap has key {
-        id: UID, 
-    }
-
-    public struct CallServiceCap has key {
         id: UID, 
     }
 
@@ -78,7 +74,7 @@ module balanced::xcall_manager{
         witness
     }
 
-    public(package) fun get_idcap(xcallIdCap: &XcallCap): &IDCap {
+    public fun get_idcap(xcallIdCap: &XcallCap): &IDCap {
         &xcallIdCap.idCap
     }
 
@@ -96,17 +92,14 @@ module balanced::xcall_manager{
         let from = execute_ticket::from(&ticket);
         let protocols = execute_ticket::protocols(&ticket);
 
-        let verified = Self::verify_protocols(config, &protocols);
-        assert!(
-            verified,
-            ProtocolMismatch
-        );
-
         let method: vector<u8> = configure_protocol::get_method(&msg);
-        assert!(
-            method == CONFIGURE_PROTOCOLS_NAME || method == EXECUTE_METHOD_NAME,
-            UnknownMessageType
-        );
+        if (!verify_protocols_unordered(&protocols, &config.sources)) {
+            assert!(
+                method == CONFIGURE_PROTOCOLS_NAME,
+                ProtocolMismatch
+            );
+            verify_protocol_recovery(&protocols, config);
+        };
 
         if (method == CONFIGURE_PROTOCOLS_NAME) {
             assert!(from == network_address::from_string(config.icon_governance), EIconAssetManagerRequired);
@@ -122,15 +115,14 @@ module balanced::xcall_manager{
     public fun verify_protocols(
        config: &Config, protocols: &vector<String>
     ): bool {
-        verify_protocol_recovery(protocols, config)
+        verify_protocols_unordered(protocols, &config.sources)
     }
 
-    fun verify_protocol_recovery(protocols: &vector<String>, config: &Config): bool {
+    fun verify_protocol_recovery(protocols: &vector<String>, config: &Config) {
         assert!(
             verify_protocols_unordered(&get_modified_protocols(config), protocols),
             ProtocolMismatch
         );
-        true
     }
 
     fun verify_protocols_unordered(

@@ -29,7 +29,7 @@ module balanced::cross_transfer {
         let from = decoder::decode_string(vector::borrow(&decoded, 1));
         let to = decoder::decode_string(vector::borrow(&decoded, 2));
         let value = decoder::decode_u64(vector::borrow(&decoded, 3));
-        let data = decoder::decode(vector::borrow(&decoded, 4));
+        let data = *vector::borrow(&decoded, 4);
         let req= XCrossTransfer {
             from,
             to,
@@ -52,8 +52,7 @@ module balanced::cross_transfer {
 
     public fun get_method(bytes:&vector<u8>): vector<u8> {
         let decoded=decoder::decode_list(bytes);
-        let method = decoder::decode(vector::borrow(&decoded, 0));
-        method
+        *vector::borrow(&decoded, 0)
     }
 
     public fun from(cross_transfer: &XCrossTransfer): String{

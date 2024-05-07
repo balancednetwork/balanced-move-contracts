@@ -1,6 +1,7 @@
 module balanced::balanced_utils {
 
     use std::string::{Self, String};
+    use std::debug;
     use sui::bcs::{Self};
     use sui::hex::{Self};
 
@@ -21,7 +22,10 @@ module balanced::balanced_utils {
     fun test_address_conversion(){
         let a = @0xBABE;
         let a_string = address_to_hex_string(&a);
+        debug::print(&string::utf8(b"hex string"));
+        debug::print(&a_string);
         let result = address_from_hex_string(&a_string);
+        debug::print(&result);
         assert!(a == result, 0x01);
     }
 } 

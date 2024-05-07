@@ -9,4 +9,3 @@ xcall = { git = "https://github.com/icon-project/xcall-multi.git", subdir = "con
 
 [addresses]
 balanced = "0x0"
-xcall_manager = "0x1"

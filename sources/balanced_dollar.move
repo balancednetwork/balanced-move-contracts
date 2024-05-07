@@ -1,5 +1,6 @@
 module balanced::balanced_dollar {
-    use std::string::{String};
+    use std::string::{Self, String};
+    use std::debug;
     use sui::url;
     use sui::coin::{Self, Coin, TreasuryCap};
     use sui::sui::SUI;
@@ -69,7 +70,7 @@ module balanced::balanced_dollar {
         });
     }
 
-    entry fun crossTransfer(
+    entry fun cross_transfer(
         xcall_state: &mut XCallState,
         config: &Config,
         xcall_manager_config: &XcallManagerConfig,
@@ -94,8 +95,8 @@ module balanced::balanced_dollar {
 
         let xcallMessageStruct = wrap_cross_transfer(
             fromAddress,
-           toAddress,
-             amount,
+            toAddress,
+            amount,
             messageData
         );
 
@@ -136,7 +137,10 @@ module balanced::balanced_dollar {
         if (method == CROSS_TRANSFER) {
             assert!(from == network_address::from_string(config.icon_bnusd), OnlyICONBnUSD);
             let message: XCrossTransfer = cross_transfer::decode(&msg);
+            debug::print(&string::utf8(b"to address"));
+            debug::print(&cross_transfer::to(&message));
             let string_to = network_address::addr(&network_address::from_string(cross_transfer::to(&message)));
+            debug::print(&string_to);
             let to = address_from_hex_string(&string_to);
             let amount: u64 = cross_transfer::value(&message);
 
@@ -154,7 +158,7 @@ module balanced::balanced_dollar {
 
     #[test_only]
     /// Wrapper of module initializer for testing
-    public fun test_init(ctx: &mut TxContext) {
+    public fun init_test(ctx: &mut TxContext) {
         init(BALANCED_DOLLAR {}, ctx)
     }
 

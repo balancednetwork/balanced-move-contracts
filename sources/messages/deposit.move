@@ -56,9 +56,8 @@ module balanced::deposit {
     }
 
     public fun get_method(bytes:&vector<u8>): vector<u8> {
-        let decoded=decoder::decode_list(bytes);
-        let method = decoder::decode(vector::borrow(&decoded, 0));
-        method
+        let decoded = decoder::decode_list(bytes);
+        *vector::borrow(&decoded, 0)
     }
 
     public fun get_token_type(bytes:&vector<u8>): String{

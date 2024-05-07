@@ -14,9 +14,9 @@ module balanced::withdraw_to {
     public fun encode(req:&WithdrawTo, method: vector<u8>): vector<u8>{
         let mut list=vector::empty<vector<u8>>();
         vector::push_back(&mut list, encoder::encode(&method));
-        vector::push_back(&mut list,encoder::encode_string(&req.token_address));
-        vector::push_back(&mut list,encoder::encode_string(&req.to));
-        vector::push_back(&mut list,encoder::encode_u64(req.amount));
+        vector::push_back(&mut list, encoder::encode_string(&req.token_address));
+        vector::push_back(&mut list, encoder::encode_string(&req.to));
+        vector::push_back(&mut list, encoder::encode_u64(req.amount));
 
         let encoded=encoder::encode_list(&list,false);
         encoded
