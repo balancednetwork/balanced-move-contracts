@@ -12,10 +12,11 @@ module balanced::xcall_manager{
 
     const NoProposalForRemovalExists: u64 = 0;
     const ProtocolMismatch: u64 = 1;
-    //const UnknownMessageType: u64 = 2;
-    const EIconAssetManagerRequired: u64 = 3;
+    const EIconAssetManagerRequired: u64 = 2;
+    const ENotUpgrade: u64 = 3;
 
-    //const EXECUTE_METHOD_NAME: vector<u8> = b"Execute";
+    const CURRENT_VERSION: u64 = 1;
+
     const CONFIGURE_PROTOCOLS_NAME: vector<u8> = b"ConfigureProtocols";
 
     public struct REGISTER_WITNESS has drop, store {}
@@ -25,10 +26,10 @@ module balanced::xcall_manager{
     public struct Config has key, store {
         id: UID, 
         icon_governance: String,
-        admin: address,
         sources: vector<String>,
         destinations: vector<String>,
-        proposed_protocol_to_remove: String
+        proposed_protocol_to_remove: String,
+        version: u64
     }
 
     public struct XcallCap has key {
@@ -36,11 +37,19 @@ module balanced::xcall_manager{
         idCap: IDCap
     }
 
+    public struct SuperAdminCap has key {
+        id: UID, 
+    }
+
     public struct AdminCap has key {
         id: UID, 
     }
 
     fun init(ctx: &mut TxContext){
+        transfer::transfer(SuperAdminCap {
+            id: object::new(ctx)
+        }, tx_context::sender(ctx));
+
         transfer::transfer(AdminCap {
             id: object::new(ctx)
         }, tx_context::sender(ctx));
@@ -51,14 +60,25 @@ module balanced::xcall_manager{
         );
     }
 
-    entry fun configure(_: &AdminCap, icon_governance: String,  admin: address, sources: vector<String>, destinations: vector<String>, ctx: &mut TxContext ){
+    entry fun add_admin(_: &SuperAdminCap, admin: address,  ctx: &mut TxContext){
+        transfer::transfer(AdminCap {
+            id: object::new(ctx)
+        }, admin);
+    }
+
+    entry fun remove_admin(_: &SuperAdminCap, admin: AdminCap){
+        let AdminCap { id } = admin;
+        id.delete();
+    }
+
+    entry fun configure(_: &AdminCap, icon_governance: String, sources: vector<String>, destinations: vector<String>, version: u64, ctx: &mut TxContext ){
         transfer::share_object(Config {
             id: object::new(ctx),
             icon_governance: icon_governance,
-            admin: admin,
             sources: sources,
             destinations: destinations,
-            proposed_protocol_to_remove: string::utf8(b"")
+            proposed_protocol_to_remove: string::utf8(b""),
+            version: version
         });
     }
 
@@ -160,6 +180,31 @@ module balanced::xcall_manager{
             i = i+1;
         };
         modifiedProtocols
+    }
+
+    public fun set_icon_governance(_: &AdminCap, config: &mut Config, icon_governance: String ){
+        config.icon_governance = icon_governance
+    }
+
+    public fun set_sources(_: &AdminCap, config: &mut Config, sources: vector<String> ){
+        config.sources = sources
+    }
+
+    public fun set_destinations(_: &AdminCap, config: &mut Config, destinations:  vector<String> ){
+        config.destinations = destinations
+    }
+
+    fun set_version(config: &mut Config, version: u64 ){
+        config.version = version
+    }
+
+    public fun get_version(config: &mut Config): u64{
+        config.version
+    }
+
+    entry fun migrate(_: &SuperAdminCap, self: &mut Config) {
+        assert!(get_version(self) < CURRENT_VERSION, ENotUpgrade);
+        set_version(self, CURRENT_VERSION);
     }
 
     #[test_only]

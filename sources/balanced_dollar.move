@@ -21,12 +21,18 @@ module balanced::balanced_dollar {
     const OnlyICONBnUSD: u64 = 3;
     const UnknownMessageType: u64 = 4;
     const ENotTransferredAmount: u64 = 5;
+    const ENotUpgrade: u64 = 6;
 
     const CROSS_TRANSFER: vector<u8> = b"xCrossTransfer";
     const CROSS_TRANSFER_REVERT: vector<u8> = b"xCrossTransferRevert";
+    const CURRENT_VERSION: u64 = 1;
 
 
     public struct BALANCED_DOLLAR has drop {}
+
+    public struct SuperAdminCap has key {
+        id: UID, 
+    }
 
     public struct AdminCap has key{
         id: UID 
@@ -37,6 +43,7 @@ module balanced::balanced_dollar {
         xcall_network_address: String,
         nid: String,
         icon_bnusd: String,
+        version: u64
     }
 
     #[allow(lint(share_owned))]
@@ -51,9 +58,14 @@ module balanced::balanced_dollar {
             ctx
         );
 
-        transfer::public_transfer(treasury_cap, tx_context::sender(ctx));
+        // need to discuss safe use of 
+        transfer::public_share_object(treasury_cap);
         
-        transfer::public_share_object(metadata);
+        transfer::public_freeze_object(metadata);
+
+        transfer::transfer(SuperAdminCap {
+            id: object::new(ctx)
+        }, tx_context::sender(ctx));
 
         transfer::transfer(AdminCap {
             id: object::new(ctx)
@@ -61,12 +73,24 @@ module balanced::balanced_dollar {
         
     }
 
-    entry fun configure(_: &AdminCap, xcall_network_address: String, nid: String, icon_bnusd: String, ctx: &mut TxContext ){
+    entry fun add_admin(_: &SuperAdminCap, admin: address,  ctx: &mut TxContext){
+        transfer::transfer(AdminCap {
+            id: object::new(ctx)
+        }, admin);
+    }
+
+    entry fun remove_admin(_: &SuperAdminCap, admin: AdminCap){
+        let AdminCap { id } = admin;
+        id.delete();
+    }
+
+    entry fun configure(_: &AdminCap, xcall_network_address: String, nid: String, icon_bnusd: String, version: u64, ctx: &mut TxContext ){
         transfer::share_object(Config {
             id: object::new(ctx),
             xcall_network_address: xcall_network_address,
             nid: nid,
-            icon_bnusd: icon_bnusd
+            icon_bnusd: icon_bnusd,
+            version: version
         });
     }
 
@@ -154,6 +178,27 @@ module balanced::balanced_dollar {
         };
 
         xcall::execute_call_result(xcall,ticket,true,fee,ctx);
+    }
+
+    public fun set_icon_bnusd(_: &AdminCap, config: &mut Config, icon_bnusd: String ){
+        config.icon_bnusd = icon_bnusd
+    }
+
+    public fun set_xcall_network_address(_: &AdminCap, config: &mut Config, xcall_network_address: String ){
+        config.xcall_network_address = xcall_network_address
+    }
+
+    fun set_version(config: &mut Config, version: u64 ){
+        config.version = version
+    }
+
+    public fun get_version(config: &mut Config): u64{
+        config.version
+    }
+
+    entry fun migrate(_: &SuperAdminCap, self: &mut Config) {
+        assert!(get_version(self) < CURRENT_VERSION, ENotUpgrade);
+        set_version(self, CURRENT_VERSION);
     }
 
     #[test_only]

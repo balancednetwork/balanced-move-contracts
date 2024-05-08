@@ -33,6 +33,9 @@ module balanced::asset_manager{
     const EZeroAmountRequired: u64 = 4;
     const EExceedsWithdrawLimit: u64 = 5;
     const EIconAssetManagerRequired: u64 = 6;
+    const ENotUpgrade: u64 = 7;
+
+    const CURRENT_VERSION: u64 = 1;
     
     public struct AssetManager<phantom T> has key, store{
         id: UID,
@@ -43,7 +46,8 @@ module balanced::asset_manager{
         id: UID, 
         xcall_network_address: String,
         icon_asset_manager: String,
-        assets: Bag
+        assets: Bag,
+        version: u64
     }
     
 
@@ -55,11 +59,19 @@ module balanced::asset_manager{
         current_limit: u64
     }
 
+    public struct SuperAdminCap has key {
+        id: UID, 
+    }
+
     public struct AdminCap has key {
         id: UID, 
     }
 
     fun init(ctx: &mut TxContext) {
+
+        transfer::transfer(SuperAdminCap {
+            id: object::new(ctx)
+        }, tx_context::sender(ctx));
 
         transfer::transfer(AdminCap {
             id: object::new(ctx)
@@ -67,13 +79,25 @@ module balanced::asset_manager{
 
     }
 
-    entry fun configure(_: &AdminCap, icon_asset_manager: String, xcall_network_address: String, ctx: &mut TxContext ) {
+    entry fun configure(_: &AdminCap, icon_asset_manager: String, xcall_network_address: String, version: u64, ctx: &mut TxContext ) {
         transfer::share_object(Config {
             id: object::new(ctx),
             icon_asset_manager: icon_asset_manager,
             xcall_network_address: xcall_network_address,
-            assets: bag::new(ctx)
+            assets: bag::new(ctx),
+            version: version
         });
+    }
+
+    entry fun add_admin(_: &SuperAdminCap, admin: address,  ctx: &mut TxContext){
+        transfer::transfer(AdminCap {
+            id: object::new(ctx)
+        }, admin);
+    }
+
+    entry fun remove_admin(_: &SuperAdminCap, admin: AdminCap){
+        let AdminCap { id } = admin;
+        id.delete();
     }
 
     entry fun register_token<T>(token: Coin<T>, config:&mut Config,  ctx: &mut TxContext) {
@@ -278,6 +302,27 @@ module balanced::asset_manager{
 
         let token = coin::take(&mut self.balance, amount, ctx);
         transfer::public_transfer(token, to);
+    }
+
+    public fun set_icon_asset_manager(_: &AdminCap, config: &mut Config, icon_asset_manager: String ){
+        config.icon_asset_manager = icon_asset_manager
+    }
+
+    public fun set_xcall_network_address(_: &AdminCap, config: &mut Config, xcall_network_address: String ){
+        config.xcall_network_address = xcall_network_address
+    }
+
+    fun set_version(config: &mut Config, version: u64 ){
+        config.version = version
+    }
+
+    public fun get_version(config: &mut Config): u64{
+        config.version
+    }
+
+    entry fun migrate(_: &SuperAdminCap, self: &mut Config) {
+        assert!(get_version(self) < CURRENT_VERSION, ENotUpgrade);
+        set_version(self, CURRENT_VERSION);
     }
 
     #[test_only]

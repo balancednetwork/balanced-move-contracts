@@ -44,11 +44,11 @@ module balanced::asset_manager_test {
         scenario.next_tx(admin);
         let adminCap = scenario.take_from_sender<AdminCap>();
         let managerAdminCap = scenario.take_from_sender<xcall_manager::AdminCap>();
-        configure(&adminCap, string::utf8(ICON_ASSET_MANAGER), string::utf8(XCALL_NETWORK_ADDRESS), scenario.ctx());
+        configure(&adminCap, string::utf8(ICON_ASSET_MANAGER), string::utf8(XCALL_NETWORK_ADDRESS), 1, scenario.ctx());
 
         let sources = vector[string::utf8(b"centralized")];
         let destinations = vector[string::utf8(b"icon/hx234"), string::utf8(b"icon/hx334")];
-        xcall_manager::configure(&managerAdminCap, string::utf8(ICON_ASSET_MANAGER), ADMIN,  sources, destinations, scenario.ctx());
+        xcall_manager::configure(&managerAdminCap, string::utf8(ICON_ASSET_MANAGER),  sources, destinations, 1, scenario.ctx());
         scenario.return_to_sender(adminCap);
         scenario.return_to_sender(managerAdminCap);
         scenario.next_tx(admin);

@@ -37,7 +37,7 @@ module balanced::xcall_manager_test {
 
         let sources = vector[string::utf8(b"centralized")];
         let destinations = vector[string::utf8(b"icon/hx234"), string::utf8(b"icon/hx334")];
-        xcall_manager::configure(&adminCap, string::utf8(b"icon/hx734"), ADMIN,  sources, destinations, scenario.ctx());
+        xcall_manager::configure(&adminCap, string::utf8(b"icon/hx734"),  sources, destinations,  1, scenario.ctx());
         scenario.return_to_sender(adminCap);
         scenario.next_tx(admin);
         scenario
