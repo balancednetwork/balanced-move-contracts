@@ -11,7 +11,7 @@ module balanced::balanced_dollar {
     use xcall::network_address::{Self};
     use xcall::execute_ticket::{Self};
 
-    use balanced::xcall_manager::{Self, Config as XcallManagerConfig, XcallCap};
+    use balanced::xcall_manager::{Self, Config as XcallManagerConfig};
     use balanced::cross_transfer::{Self, wrap_cross_transfer, XCrossTransfer};
     use balanced::cross_transfer_revert::{Self, wrap_cross_transfer_revert, XCrossTransferRevert};
     use balanced::balanced_utils::{address_to_hex_string, address_from_hex_string};
@@ -37,6 +37,11 @@ module balanced::balanced_dollar {
     public struct AdminCap has key{
         id: UID 
     }
+    
+    public struct TreasuryCapCarrier<phantom BALANCED_DOLLAR> has key{
+        id: UID,
+        treasury_cap: TreasuryCap<BALANCED_DOLLAR>
+    }
 
     public struct Config has key, store{
         id: UID, 
@@ -58,18 +63,20 @@ module balanced::balanced_dollar {
             ctx
         );
 
-        // need to discuss safe use of 
-        transfer::public_share_object(treasury_cap);
+        transfer::share_object(TreasuryCapCarrier{
+            id: object::new(ctx),
+            treasury_cap: treasury_cap
+        });
         
         transfer::public_freeze_object(metadata);
 
         transfer::transfer(SuperAdminCap {
             id: object::new(ctx)
-        }, tx_context::sender(ctx));
+        }, ctx.sender());
 
         transfer::transfer(AdminCap {
             id: object::new(ctx)
-        }, tx_context::sender(ctx));
+        }, ctx.sender());
         
     }
 
@@ -98,10 +105,9 @@ module balanced::balanced_dollar {
         xcall_state: &mut XCallState,
         config: &Config,
         xcall_manager_config: &XcallManagerConfig,
-        xcall_cap: &XcallCap,
         fee: Coin<SUI>,
         token: Coin<BALANCED_DOLLAR>,
-        treasury_cap: &mut TreasuryCap<BALANCED_DOLLAR>,
+        carrier: &mut TreasuryCapCarrier<BALANCED_DOLLAR>,
         to: address,
         amount: u64,
         data: Option<vector<u8>>,
@@ -110,9 +116,9 @@ module balanced::balanced_dollar {
         let messageData = option::get_with_default(&data, b"");
         assert!(amount > 0, AmountLessThanMinimumAmount);
         assert!(coin::value(&token) == amount, ENotTransferredAmount);
-        coin::burn(treasury_cap, token);
+        coin::burn(get_treasury_cap_mut(carrier), token);
 
-        let sender = address_to_hex_string(&tx_context::sender(ctx));
+        let sender = address_to_hex_string(&ctx.sender());
         let fromAddress = network_address::to_string(&network_address::create(config.xcall_network_address, sender));
         let string_to = address_to_hex_string(&to);
         let toAddress = network_address::to_string(&network_address::create(config.xcall_network_address, string_to));
@@ -130,7 +136,7 @@ module balanced::balanced_dollar {
         );
 
         let (sources, destinations) = xcall_manager::get_protocals(xcall_manager_config);
-        let idcap = xcall_manager::get_idcap(xcall_cap);
+        let idcap = xcall_manager::get_idcap(xcall_manager_config);
 
         let xcallMessage = cross_transfer::encode(&xcallMessageStruct, CROSS_TRANSFER);
         let rollback = cross_transfer_revert::encode(&rollbackStruct, CROSS_TRANSFER_REVERT);
@@ -139,8 +145,8 @@ module balanced::balanced_dollar {
         xcall::send_call(xcall_state, fee, idcap, config.icon_bnusd, envelope::encode(&envelope), ctx);
     }
 
-    entry public fun execute_call<BALANCED_DOLLAR>(cap: &mut TreasuryCap<BALANCED_DOLLAR>, xcall_cap: &XcallCap, config: &Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
-        let idcap = xcall_manager::get_idcap(xcall_cap);
+    entry public fun execute_call<BALANCED_DOLLAR>(carier: &mut TreasuryCapCarrier<BALANCED_DOLLAR>, config: &Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+        let idcap = xcall_manager::get_idcap(xcall_manager_config);
         let ticket = xcall::execute_call(xcall, idcap, request_id, data, ctx);
         let msg = execute_ticket::message(&ticket);
         let from = execute_ticket::from(&ticket);
@@ -168,16 +174,20 @@ module balanced::balanced_dollar {
             let to = address_from_hex_string(&string_to);
             let amount: u64 = cross_transfer::value(&message);
 
-            coin::mint_and_transfer(cap,  amount, to, ctx)
+            coin::mint_and_transfer(get_treasury_cap_mut(carier),  amount, to, ctx)
         } else if (method == CROSS_TRANSFER_REVERT) {
             let message: XCrossTransferRevert = cross_transfer_revert::decode(&msg);
             let to = cross_transfer_revert::to(&message);
             let amount: u64 = cross_transfer_revert::value(&message);
 
-            coin::mint_and_transfer(cap,  amount, to, ctx)
+            coin::mint_and_transfer(get_treasury_cap_mut(carier),  amount, to, ctx)
         };
 
         xcall::execute_call_result(xcall,ticket,true,fee,ctx);
+    }
+
+    fun get_treasury_cap_mut<BALANCED_DOLLAR>(treasury_cap_carrier: &mut TreasuryCapCarrier<BALANCED_DOLLAR>): &mut TreasuryCap<BALANCED_DOLLAR> {
+        &mut treasury_cap_carrier.treasury_cap
     }
 
     public fun set_icon_bnusd(_: &AdminCap, config: &mut Config, icon_bnusd: String ){
@@ -199,6 +209,12 @@ module balanced::balanced_dollar {
     entry fun migrate(_: &SuperAdminCap, self: &mut Config) {
         assert!(get_version(self) < CURRENT_VERSION, ENotUpgrade);
         set_version(self, CURRENT_VERSION);
+    }
+    
+
+    #[test_only]
+    public fun get_treasury_cap_for_testing<BALANCED_DOLLAR>(treasury_cap_carrier: &mut TreasuryCapCarrier<BALANCED_DOLLAR>): &mut TreasuryCap<BALANCED_DOLLAR> {
+        &mut treasury_cap_carrier.treasury_cap
     }
 
     #[test_only]

@@ -29,13 +29,14 @@ module balanced::xcall_manager{
         sources: vector<String>,
         destinations: vector<String>,
         proposed_protocol_to_remove: String,
-        version: u64
+        version: u64,
+        id_cap: IDCap
     }
 
-    public struct XcallCap has key {
-        id: UID,
-        idCap: IDCap
-    }
+    // public struct XcallCap has key {
+    //     id: UID,
+    //     idCap: IDCap
+    // }
 
     public struct SuperAdminCap has key {
         id: UID, 
@@ -48,11 +49,11 @@ module balanced::xcall_manager{
     fun init(ctx: &mut TxContext){
         transfer::transfer(SuperAdminCap {
             id: object::new(ctx)
-        }, tx_context::sender(ctx));
+        }, ctx.sender());
 
         transfer::transfer(AdminCap {
             id: object::new(ctx)
-        }, tx_context::sender(ctx));
+        }, ctx.sender());
 
         transfer::transfer(
             WitnessCarrier { id: object::new(ctx), witness:REGISTER_WITNESS{} },
@@ -71,22 +72,28 @@ module balanced::xcall_manager{
         id.delete();
     }
 
-    entry fun configure(_: &AdminCap, icon_governance: String, sources: vector<String>, destinations: vector<String>, version: u64, ctx: &mut TxContext ){
+    entry fun configure(_: &AdminCap, xcall_state: &XCallState, witness_carrier: WitnessCarrier, icon_governance: String, sources: vector<String>, destinations: vector<String>, version: u64, ctx: &mut TxContext ){
+        let w = get_witness(witness_carrier);
+        let id_cap =   xcall::register_dapp(xcall_state, w, ctx);
+
         transfer::share_object(Config {
             id: object::new(ctx),
             icon_governance: icon_governance,
             sources: sources,
             destinations: destinations,
             proposed_protocol_to_remove: string::utf8(b""),
-            version: version
+            version: version,
+            id_cap: id_cap
         });
+
     }
 
-    public fun register_xcall(xcall_state: &XCallState, witness_carrier: WitnessCarrier, ctx: &mut TxContext){
-       let w = get_witness(witness_carrier);
-       let idCap =   xcall::register_dapp(xcall_state, w, ctx);
-       transfer::share_object(XcallCap {id: object::new(ctx), idCap: idCap});
-    }
+    // public fun register_xcall(config: &mut config, xcall_state: &XCallState, witness_carrier: WitnessCarrier, ctx: &mut TxContext){
+    //    let w = get_witness(witness_carrier);
+    //    let idCap =   xcall::register_dapp(xcall_state, w, ctx);
+       
+    //    transfer::share_object(XcallCap {id: object::new(ctx), idCap: idCap});
+    // }
 
     fun get_witness(carrier: WitnessCarrier): REGISTER_WITNESS {
         let WitnessCarrier { id, witness } = carrier;
@@ -94,8 +101,8 @@ module balanced::xcall_manager{
         witness
     }
 
-    public fun get_idcap(xcallIdCap: &XcallCap): &IDCap {
-        &xcallIdCap.idCap
+    public fun get_idcap(config: &Config): &IDCap {
+        &config.id_cap
     }
 
     public fun get_protocals(config: &Config):(vector<String>, vector<String>){
@@ -106,8 +113,8 @@ module balanced::xcall_manager{
         config.proposed_protocol_to_remove = protocol;
     }
 
-    entry public fun execute_call(xcall_cap: &XcallCap, config: &mut Config, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
-        let ticket = xcall::execute_call(xcall, &xcall_cap.idCap, request_id, data, ctx);
+    entry public fun execute_call(config: &mut Config, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+        let ticket = xcall::execute_call(xcall, &config.id_cap, request_id, data, ctx);
         let msg = execute_ticket::message(&ticket);
         let from = execute_ticket::from(&ticket);
         let protocols = execute_ticket::protocols(&ticket);

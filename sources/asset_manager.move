@@ -13,7 +13,7 @@ module balanced::asset_manager{
     use xcall::network_address::{Self};
     use xcall::execute_ticket::{Self};
 
-    use balanced::xcall_manager::{Self, Config as XcallManagerConfig, XcallCap};
+    use balanced::xcall_manager::{Self, Config as XcallManagerConfig};
     use balanced::deposit::{Self};
     use balanced::deposit_revert::{Self, DepositRevert};
     use balanced::withdraw_to::{Self, WithdrawTo};
@@ -71,7 +71,7 @@ module balanced::asset_manager{
 
         transfer::transfer(SuperAdminCap {
             id: object::new(ctx)
-        }, tx_context::sender(ctx));
+        }, ctx.sender());
 
         transfer::transfer(AdminCap {
             id: object::new(ctx)
@@ -179,9 +179,8 @@ module balanced::asset_manager{
 
     public entry fun deposit<T>(
         xcallState: &mut XCallState, 
-        xcallCap: &XcallCap, 
         config: &mut Config, 
-        xcallManagerConfig: &XcallManagerConfig, 
+        xcall_manager_config: &XcallManagerConfig, 
         fee: Coin<SUI>,
         token: Coin<T>, 
         amount: u64, 
@@ -189,9 +188,8 @@ module balanced::asset_manager{
         data: Option<vector<u8>>, 
         ctx: &mut TxContext
     ) {
-        
-        let sender = tx_context::sender(ctx);
-        let string_from = address_to_hex_string(&tx_context::sender(ctx));
+        let sender = ctx.sender();
+        let string_from = address_to_hex_string(&sender);
         let from_address = network_address::to_string(&network_address::create(config.xcall_network_address, string_from));
         let mut to_address = from_address;
         if(option::is_some(&to)){
@@ -223,8 +221,8 @@ module balanced::asset_manager{
         );
         let rollback = deposit_revert::encode(&rollbackMessage, DEPOSIT_REVERT_NAME);
 
-       let(sources, destinations) = xcall_manager::get_protocals(xcallManagerConfig); 
-       let idcap = xcall_manager::get_idcap(xcallCap);
+       let(sources, destinations) = xcall_manager::get_protocals(xcall_manager_config); 
+       let idcap = xcall_manager::get_idcap(xcall_manager_config);
        let envelope = envelope::wrap_call_message_rollback(data, rollback, sources, destinations);
        xcall::send_call(xcallState, fee, idcap, config.icon_asset_manager, envelope::encode(&envelope), ctx);
     }
@@ -233,8 +231,8 @@ module balanced::asset_manager{
         deposit::get_token_type(&msg)
     }
 
-    entry public fun execute_call<T>(xcall_cap: &XcallCap, config: &mut Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee:Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
-        let idcap = xcall_manager::get_idcap(xcall_cap);
+    entry public fun execute_call<T>(config: &mut Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee:Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+        let idcap = xcall_manager::get_idcap(xcall_manager_config);
         let ticket = xcall::execute_call(xcall, idcap, request_id, data, ctx);
         let msg = execute_ticket::message(&ticket);
         let from = execute_ticket::from(&ticket);
