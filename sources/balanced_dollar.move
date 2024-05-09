@@ -1,6 +1,5 @@
 module balanced::balanced_dollar {
-    use std::string::{Self, String};
-    use std::debug;
+    use std::string::{String};
     use sui::url;
     use sui::coin::{Self, Coin, TreasuryCap};
     use sui::sui::SUI;
@@ -51,7 +50,6 @@ module balanced::balanced_dollar {
         version: u64
     }
 
-    #[allow(lint(share_owned))]
     fun init(witness: BALANCED_DOLLAR, ctx: &mut TxContext) {
         let (treasury_cap, metadata) = coin::create_currency<BALANCED_DOLLAR>(
             witness, 
@@ -167,10 +165,7 @@ module balanced::balanced_dollar {
         if (method == CROSS_TRANSFER) {
             assert!(from == network_address::from_string(config.icon_bnusd), OnlyICONBnUSD);
             let message: XCrossTransfer = cross_transfer::decode(&msg);
-            debug::print(&string::utf8(b"to address"));
-            debug::print(&cross_transfer::to(&message));
             let string_to = network_address::addr(&network_address::from_string(cross_transfer::to(&message)));
-            debug::print(&string_to);
             let to = address_from_hex_string(&string_to);
             let amount: u64 = cross_transfer::value(&message);
 

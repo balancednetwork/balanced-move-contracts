@@ -33,11 +33,6 @@ module balanced::xcall_manager{
         id_cap: IDCap
     }
 
-    // public struct XcallCap has key {
-    //     id: UID,
-    //     idCap: IDCap
-    // }
-
     public struct SuperAdminCap has key {
         id: UID, 
     }
@@ -87,13 +82,6 @@ module balanced::xcall_manager{
         });
 
     }
-
-    // public fun register_xcall(config: &mut config, xcall_state: &XCallState, witness_carrier: WitnessCarrier, ctx: &mut TxContext){
-    //    let w = get_witness(witness_carrier);
-    //    let idCap =   xcall::register_dapp(xcall_state, w, ctx);
-       
-    //    transfer::share_object(XcallCap {id: object::new(ctx), idCap: idCap});
-    // }
 
     fun get_witness(carrier: WitnessCarrier): REGISTER_WITNESS {
         let WitnessCarrier { id, witness } = carrier;
