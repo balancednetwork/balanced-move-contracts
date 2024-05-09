@@ -24,7 +24,7 @@ module balanced::asset_manager{
     const DEPOSIT_REVERT_NAME: vector<u8> = b"DepositRevert";
     const WITHDRAW_NATIVE_TO_NAME: vector<u8> = b"WithdrawNativeTo";
 
-    const POINTS: u64 = 1000;
+    const POINTS: u64 = 10000;
 
     const EAmountLessThanMinimumAmount: u64 = 0;
     const ENotDepositedAmount: u64 = 1;
@@ -111,7 +111,7 @@ module balanced::asset_manager{
         config.assets.add(token_type, asset_manager);
     }
 
-    entry fun configure_rate_limit<T: key+store> (
+    entry fun configure_rate_limit<T> (
         _: &AdminCap,
         config: &Config,
         c: &Clock,
@@ -132,49 +132,48 @@ module balanced::asset_manager{
     entry fun reset_limit<T> (
         _: &AdminCap,
         config: &Config,
-        rateLimit: &mut RateLimit<T>
+        rate_limit: &mut RateLimit<T>
     ) 
     {
         let asset_manager = get_asset_manager<T>(config);
-        rateLimit.current_limit = (balance::value(&asset_manager.balance) *rateLimit.percentage) / POINTS
+        rate_limit.current_limit = (balance::value(&asset_manager.balance) *rate_limit.percentage) / POINTS
     }
 
     public fun get_withdraw_limit<T>(config: &Config,
-        rateLimit: &RateLimit<T>, c: &Clock): u64  {
+        rate_limit: &RateLimit<T>, c: &Clock): u64  {
         let asset_manager = get_asset_manager<T>(config);
 
         let tokenBalance = balance::value(&asset_manager.balance);
-        calculate_limit(tokenBalance, rateLimit, c)
+        calculate_limit(tokenBalance, rate_limit, c)
     }
 
-    fun calculate_limit<T>(tokenBalance: u64, rateLimit: &RateLimit<T>, c: &Clock): u64 {
-        let period = rateLimit.period;
-        let percentage = rateLimit.percentage;
+    fun calculate_limit<T>(tokenBalance: u64, rate_limit: &RateLimit<T>, c: &Clock): u64 {
+        let period = rate_limit.period;
+        let percentage = rate_limit.percentage;
         if (period == 0) {
             return 0
         };
-
-        let maxLimit = (tokenBalance * percentage) / POINTS;
+        
+        let maxLimit = (tokenBalance  * percentage ) / POINTS;
         let maxWithdraw = tokenBalance - maxLimit;
-        let mut timeDiff = clock::timestamp_ms(c) - rateLimit.last_update;
+        let mut timeDiff = clock::timestamp_ms(c) - rate_limit.last_update;
         timeDiff = if(timeDiff > period){ period } else { timeDiff };
 
         let addedAllowedWithdrawal = (maxWithdraw * timeDiff) / period;
-        let mut limit = rateLimit.current_limit - addedAllowedWithdrawal;
+        let mut limit = rate_limit.current_limit - addedAllowedWithdrawal;
         limit = if(tokenBalance > limit){ limit } else { tokenBalance };
         limit = if(limit > maxLimit){ limit } else { maxLimit };
         limit
     }
 
-    entry fun verify_withdraw<T>(config: &Config, rateLimit: &mut RateLimit<T>, c: &Clock, amount: u64) {
-        let asset_manager = get_asset_manager<T>(config);
+    fun verify_withdraw<T>(balance: &Balance<T>, rate_limit: &mut RateLimit<T>, c: &Clock, amount: u64) {
 
-        let tokenBalance = balance::value(&asset_manager.balance);
-        let limit = calculate_limit(tokenBalance, rateLimit, c);
+        let tokenBalance = balance::value(balance);
+        let limit = calculate_limit(tokenBalance, rate_limit, c);
         assert!(tokenBalance - amount >= limit, EExceedsWithdrawLimit );
 
-        rateLimit.current_limit = limit;
-        rateLimit.last_update = clock::timestamp_ms(c);
+        rate_limit.current_limit = limit;
+        rate_limit.last_update = clock::timestamp_ms(c);
     }
 
     public entry fun deposit<T>(
@@ -231,7 +230,7 @@ module balanced::asset_manager{
         deposit::get_token_type(&msg)
     }
 
-    entry public fun execute_call<T>(config: &mut Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee:Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+    entry public fun execute_call<T>(config: &mut Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee:Coin<SUI>, rate_limit: &mut RateLimit<T>, c: &Clock, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
         let idcap = xcall_manager::get_idcap(xcall_manager_config);
         let ticket = xcall::execute_call(xcall, idcap, request_id, data, ctx);
         let msg = execute_ticket::message(&ticket);
@@ -258,18 +257,24 @@ module balanced::asset_manager{
                 assert!(from == network_address::from_string(config.icon_asset_manager), EIconAssetManagerRequired);
                 let message: WithdrawTo = withdraw_to::decode(&msg);
                 let to_address = network_address::addr(&network_address::from_string(withdraw_to::to(&message)));
-                let self = get_asset_manager_mut<T>(config);
+                let asset_manager = get_asset_manager_mut<T>(config);
+                let balance = &mut asset_manager.balance;
                 withdraw(
-                    self,
+                    balance,
+                    rate_limit,
+                    c,
                     address_from_hex_string(&to_address),
                     withdraw_to::amount(&message),
                     ctx
                 );
             } else if (method == DEPOSIT_REVERT_NAME) {
-                let self = get_asset_manager_mut<T>(config);
+                let asset_manager = get_asset_manager_mut<T>(config);
+                let balance = &mut asset_manager.balance;
                 let message: DepositRevert = deposit_revert::decode(&msg);
                     withdraw(
-                        self,
+                        balance,
+                        rate_limit,
+                        c,
                         deposit_revert::to(&message),
                         deposit_revert::amount(&message),
                         ctx
@@ -295,10 +300,11 @@ module balanced::asset_manager{
         asset_manager
     }
 
-    fun withdraw<T>(self: &mut AssetManager<T>, to: address, amount: u64, ctx: &mut TxContext){
+    fun withdraw<T>(balance: &mut Balance<T>, rate_limit: &mut RateLimit<T>, c: &Clock, to: address, amount: u64, ctx: &mut TxContext){
         assert!(amount>0, EAmountLessThanMinimumAmount);
+        verify_withdraw(balance, rate_limit, c, amount );
 
-        let token = coin::take(&mut self.balance, amount, ctx);
+        let token = coin::take(balance, amount, ctx);
         transfer::public_transfer(token, to);
     }
 

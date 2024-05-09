@@ -53,7 +53,7 @@ module balanced::balanced_dollar {
     fun init(witness: BALANCED_DOLLAR, ctx: &mut TxContext) {
         let (treasury_cap, metadata) = coin::create_currency<BALANCED_DOLLAR>(
             witness, 
-            18, 
+            9, 
             b"bnUSD", 
             b"Balanced Dollar", 
             b"A stable coin issued by Balanced", 
