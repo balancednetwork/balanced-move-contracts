@@ -33,11 +33,12 @@ module balanced::xcall_manager{
         id_cap: IDCap
     }
 
-    fun init(ctx: &mut TxContext){
-        transfer::transfer(SuperAdminCap {
-            id: object::new(ctx)
-        }, ctx.sender());
+    public struct AdminCap has key {
+        id: UID, 
+    }
 
+    fun init(ctx: &mut TxContext){
+      
         transfer::transfer(AdminCap {
             id: object::new(ctx)
         }, ctx.sender());
@@ -158,15 +159,15 @@ module balanced::xcall_manager{
         modifiedProtocols
     }
 
-    public fun set_icon_governance(_: &AdminCap, config: &mut Config, icon_governance: String ){
+    entry fun set_icon_governance(_: &AdminCap, config: &mut Config, icon_governance: String ){
         config.icon_governance = icon_governance
     }
 
-    public fun set_sources(_: &AdminCap, config: &mut Config, sources: vector<String> ){
+    entry fun set_sources(_: &AdminCap, config: &mut Config, sources: vector<String> ){
         config.sources = sources
     }
 
-    public fun set_destinations(_: &AdminCap, config: &mut Config, destinations:  vector<String> ){
+    entry fun set_destinations(_: &AdminCap, config: &mut Config, destinations:  vector<String> ){
         config.destinations = destinations
     }
 
@@ -178,7 +179,7 @@ module balanced::xcall_manager{
         config.version
     }
 
-    entry fun migrate(_: &SuperAdminCap, self: &mut Config) {
+    entry fun migrate(_: &AdminCap, self: &mut Config) {
         assert!(get_version(self) < CURRENT_VERSION, ENotUpgrade);
         set_version(self, CURRENT_VERSION);
     }

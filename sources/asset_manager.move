@@ -157,7 +157,7 @@ module balanced::asset_manager{
         rate_limit.last_update = clock::timestamp_ms(c);
     }
 
-    public entry fun deposit<T>(
+    entry fun deposit<T>(
         xcallState: &mut XCallState, 
         config: &mut Config, 
         xcall_manager_config: &XcallManagerConfig, 
@@ -173,7 +173,7 @@ module balanced::asset_manager{
         //let from_address = network_address::to_string(&network_address::create(config.xcall_network_address, string_from));
         let mut to_address = from_address;
         if(option::is_some(&to)){
-            let to_address = address_to_hex_string(option::borrow(&to));
+            to_address = address_to_hex_string(option::borrow(&to));
             //to_address = network_address::to_string(&network_address::create(config.xcall_network_address, string_to));
         };
         let messageData = option::get_with_default(&data, b"");
@@ -211,7 +211,7 @@ module balanced::asset_manager{
         deposit::get_token_type(&msg)
     }
 
-    entry public fun execute_call<T>(config: &mut Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee:Coin<SUI>, rate_limit: &mut RateLimit<T>, c: &Clock, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+    entry fun execute_call<T>(config: &mut Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee:Coin<SUI>, rate_limit: &mut RateLimit<T>, c: &Clock, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
         let idcap = xcall_manager::get_idcap(xcall_manager_config);
         let ticket = xcall::execute_call(xcall, idcap, request_id, data, ctx);
         let msg = execute_ticket::message(&ticket);
@@ -289,11 +289,11 @@ module balanced::asset_manager{
         transfer::public_transfer(token, to);
     }
 
-    public fun set_icon_asset_manager(_: &AdminCap, config: &mut Config, icon_asset_manager: String ){
+    entry fun set_icon_asset_manager(_: &AdminCap, config: &mut Config, icon_asset_manager: String ){
         config.icon_asset_manager = icon_asset_manager
     }
 
-    public fun set_xcall_network_address(_: &AdminCap, config: &mut Config, xcall_network_address: String ){
+    entry fun set_xcall_network_address(_: &AdminCap, config: &mut Config, xcall_network_address: String ){
         config.xcall_network_address = xcall_network_address
     }
 
@@ -305,7 +305,7 @@ module balanced::asset_manager{
         config.version
     }
 
-    entry fun migrate(_: &SuperAdminCap, self: &mut Config) {
+    entry fun migrate(_: &AdminCap, self: &mut Config) {
         assert!(get_version(self) < CURRENT_VERSION, ENotUpgrade);
         set_version(self, CURRENT_VERSION);
     }

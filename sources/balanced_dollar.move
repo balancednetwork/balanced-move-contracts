@@ -97,10 +97,10 @@ module balanced::balanced_dollar {
         assert!(coin::value(&token) == amount, ENotTransferredAmount);
         coin::burn(get_treasury_cap_mut(carrier), token);
 
-        let sender = address_to_hex_string(&ctx.sender());
-        let fromAddress = network_address::to_string(&network_address::create(config.xcall_network_address, sender));
-        let string_to = address_to_hex_string(&to);
-        let toAddress = network_address::to_string(&network_address::create(config.xcall_network_address, string_to));
+        let fromAddress = address_to_hex_string(&ctx.sender());
+        //let fromAddress = network_address::to_string(&network_address::create(config.xcall_network_address, sender));
+        let toAddress = address_to_hex_string(&to);
+        //let toAddress = network_address::to_string(&network_address::create(config.xcall_network_address, string_to));
 
         let xcallMessageStruct = wrap_cross_transfer(
             fromAddress,
@@ -124,7 +124,7 @@ module balanced::balanced_dollar {
         xcall::send_call(xcall_state, fee, idcap, config.icon_bnusd, envelope::encode(&envelope), ctx);
     }
 
-    entry public fun execute_call<BALANCED_DOLLAR>(carier: &mut TreasuryCapCarrier<BALANCED_DOLLAR>, config: &Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+    entry fun execute_call<BALANCED_DOLLAR>(carier: &mut TreasuryCapCarrier<BALANCED_DOLLAR>, config: &Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
         let idcap = xcall_manager::get_idcap(xcall_manager_config);
         let ticket = xcall::execute_call(xcall, idcap, request_id, data, ctx);
         let msg = execute_ticket::message(&ticket);
@@ -166,11 +166,11 @@ module balanced::balanced_dollar {
         &mut treasury_cap_carrier.treasury_cap
     }
 
-    public fun set_icon_bnusd(_: &AdminCap, config: &mut Config, icon_bnusd: String ){
+    entry fun set_icon_bnusd(_: &AdminCap, config: &mut Config, icon_bnusd: String ){
         config.icon_bnusd = icon_bnusd
     }
 
-    public fun set_xcall_network_address(_: &AdminCap, config: &mut Config, xcall_network_address: String ){
+    entry fun set_xcall_network_address(_: &AdminCap, config: &mut Config, xcall_network_address: String ){
         config.xcall_network_address = xcall_network_address
     }
 
@@ -182,7 +182,7 @@ module balanced::balanced_dollar {
         config.version
     }
 
-    entry fun migrate(_: &SuperAdminCap, self: &mut Config) {
+    entry fun migrate(_: &AdminCap, self: &mut Config) {
         assert!(get_version(self) < CURRENT_VERSION, ENotUpgrade);
         set_version(self, CURRENT_VERSION);
     }
