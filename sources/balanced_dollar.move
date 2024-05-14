@@ -29,10 +29,6 @@ module balanced::balanced_dollar {
 
     public struct BALANCED_DOLLAR has drop {}
 
-    public struct SuperAdminCap has key {
-        id: UID, 
-    }
-
     public struct AdminCap has key{
         id: UID 
     }
@@ -68,25 +64,10 @@ module balanced::balanced_dollar {
         
         transfer::public_freeze_object(metadata);
 
-        transfer::transfer(SuperAdminCap {
-            id: object::new(ctx)
-        }, ctx.sender());
-
         transfer::transfer(AdminCap {
             id: object::new(ctx)
         }, ctx.sender());
         
-    }
-
-    entry fun add_admin(_: &SuperAdminCap, admin: address,  ctx: &mut TxContext){
-        transfer::transfer(AdminCap {
-            id: object::new(ctx)
-        }, admin);
-    }
-
-    entry fun remove_admin(_: &SuperAdminCap, admin: AdminCap){
-        let AdminCap { id } = admin;
-        id.delete();
     }
 
     entry fun configure(_: &AdminCap, xcall_network_address: String, nid: String, icon_bnusd: String, version: u64, ctx: &mut TxContext ){

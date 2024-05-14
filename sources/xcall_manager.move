@@ -33,14 +33,6 @@ module balanced::xcall_manager{
         id_cap: IDCap
     }
 
-    public struct SuperAdminCap has key {
-        id: UID, 
-    }
-
-    public struct AdminCap has key {
-        id: UID, 
-    }
-
     fun init(ctx: &mut TxContext){
         transfer::transfer(SuperAdminCap {
             id: object::new(ctx)
@@ -54,17 +46,6 @@ module balanced::xcall_manager{
             WitnessCarrier { id: object::new(ctx), witness:REGISTER_WITNESS{} },
             ctx.sender()
         );
-    }
-
-    entry fun add_admin(_: &SuperAdminCap, admin: address,  ctx: &mut TxContext){
-        transfer::transfer(AdminCap {
-            id: object::new(ctx)
-        }, admin);
-    }
-
-    entry fun remove_admin(_: &SuperAdminCap, admin: AdminCap){
-        let AdminCap { id } = admin;
-        id.delete();
     }
 
     entry fun configure(_: &AdminCap, xcall_state: &XCallState, witness_carrier: WitnessCarrier, icon_governance: String, sources: vector<String>, destinations: vector<String>, version: u64, ctx: &mut TxContext ){
@@ -101,7 +82,7 @@ module balanced::xcall_manager{
         config.proposed_protocol_to_remove = protocol;
     }
 
-    entry public fun execute_call(config: &mut Config, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+    entry fun execute_call(config: &mut Config, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
         let ticket = xcall::execute_call(xcall, &config.id_cap, request_id, data, ctx);
         let msg = execute_ticket::message(&ticket);
         let from = execute_ticket::from(&ticket);

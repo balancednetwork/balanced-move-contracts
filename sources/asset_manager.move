@@ -59,20 +59,12 @@ module balanced::asset_manager{
         current_limit: u64
     }
 
-    public struct SuperAdminCap has key {
-        id: UID, 
-    }
-
     public struct AdminCap has key {
         id: UID, 
     }
 
     fun init(ctx: &mut TxContext) {
-
-        transfer::transfer(SuperAdminCap {
-            id: object::new(ctx)
-        }, ctx.sender());
-
+      
         transfer::transfer(AdminCap {
             id: object::new(ctx)
         }, ctx.sender());
@@ -87,17 +79,6 @@ module balanced::asset_manager{
             assets: bag::new(ctx),
             version: version
         });
-    }
-
-    entry fun add_admin(_: &SuperAdminCap, admin: address,  ctx: &mut TxContext){
-        transfer::transfer(AdminCap {
-            id: object::new(ctx)
-        }, admin);
-    }
-
-    entry fun remove_admin(_: &SuperAdminCap, admin: AdminCap){
-        let AdminCap { id } = admin;
-        id.delete();
     }
 
     entry fun register_token<T>(token: Coin<T>, config:&mut Config,  ctx: &mut TxContext) {
@@ -188,12 +169,12 @@ module balanced::asset_manager{
         ctx: &mut TxContext
     ) {
         let sender = ctx.sender();
-        let string_from = address_to_hex_string(&sender);
-        let from_address = network_address::to_string(&network_address::create(config.xcall_network_address, string_from));
+        let from_address = address_to_hex_string(&sender);
+        //let from_address = network_address::to_string(&network_address::create(config.xcall_network_address, string_from));
         let mut to_address = from_address;
         if(option::is_some(&to)){
-            let string_to = address_to_hex_string(option::borrow(&to));
-            to_address = network_address::to_string(&network_address::create(config.xcall_network_address, string_to));
+            let to_address = address_to_hex_string(option::borrow(&to));
+            //to_address = network_address::to_string(&network_address::create(config.xcall_network_address, string_to));
         };
         let messageData = option::get_with_default(&data, b"");
         let self = get_asset_manager_mut<T>(config);
