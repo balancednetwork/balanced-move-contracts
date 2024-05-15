@@ -40,8 +40,6 @@ module balanced::balanced_dollar {
 
     public struct Config has key, store{
         id: UID, 
-        xcall_network_address: String,
-        nid: String,
         icon_bnusd: String,
         version: u64
     }
@@ -70,11 +68,9 @@ module balanced::balanced_dollar {
         
     }
 
-    entry fun configure(_: &AdminCap, xcall_network_address: String, nid: String, icon_bnusd: String, version: u64, ctx: &mut TxContext ){
+    entry fun configure(_: &AdminCap, icon_bnusd: String, version: u64, ctx: &mut TxContext ){
         transfer::share_object(Config {
             id: object::new(ctx),
-            xcall_network_address: xcall_network_address,
-            nid: nid,
             icon_bnusd: icon_bnusd,
             version: version
         });
@@ -166,10 +162,6 @@ module balanced::balanced_dollar {
 
     entry fun set_icon_bnusd(_: &AdminCap, config: &mut Config, icon_bnusd: String ){
         config.icon_bnusd = icon_bnusd
-    }
-
-    entry fun set_xcall_network_address(_: &AdminCap, config: &mut Config, xcall_network_address: String ){
-        config.xcall_network_address = xcall_network_address
     }
 
     fun set_version(config: &mut Config, version: u64 ){

@@ -44,7 +44,7 @@ module balanced::balanced_dollar_test {
         scenario.next_tx(admin);
         let adminCap = scenario.take_from_sender<AdminCap>();
         let managerAdminCap = scenario.take_from_sender<xcall_manager::AdminCap>();
-        configure(&adminCap, string::utf8(b"sui1/xcall"), string::utf8(b"sui1"), string::utf8(b"icon/hx534"),  1,  scenario.ctx());
+        configure(&adminCap, string::utf8(b"icon/hx534"),  1,  scenario.ctx());
 
         let sources = vector[string::utf8(b"centralized")];
         let destinations = vector[string::utf8(b"icon/hx234"), string::utf8(b"icon/hx334")];

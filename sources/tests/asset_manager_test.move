@@ -27,7 +27,6 @@ module balanced::asset_manager_test {
     use balanced::deposit_revert::{Self, wrap_deposit_revert};
 
     const ICON_ASSET_MANAGER: vector<u8> = b"icon/hx734";
-    const XCALL_NETWORK_ADDRESS: vector<u8> = b"netId";
     const ADMIN: address = @0xBABE;
     const TO_ADDRESS: vector<u8>  = b"sui/0000000000000000000000000000000000000000000000000000000000001234";
     const ADDRESS_TO_ADDRESS: address = @0x0000000000000000000000000000000000000000000000000000000000001234;
@@ -43,7 +42,7 @@ module balanced::asset_manager_test {
         scenario.next_tx(admin);
         let adminCap = scenario.take_from_sender<AdminCap>();
         let managerAdminCap = scenario.take_from_sender<xcall_manager::AdminCap>();
-        configure(&adminCap, string::utf8(ICON_ASSET_MANAGER), string::utf8(XCALL_NETWORK_ADDRESS), 1, scenario.ctx());
+        configure(&adminCap, string::utf8(ICON_ASSET_MANAGER), 1, scenario.ctx());
       
 
         scenario.next_tx(admin);

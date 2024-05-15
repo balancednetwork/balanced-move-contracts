@@ -43,7 +43,6 @@ module balanced::asset_manager{
 
     public struct Config has key {
         id: UID, 
-        xcall_network_address: String,
         icon_asset_manager: String,
         assets: Bag,
         version: u64
@@ -70,11 +69,10 @@ module balanced::asset_manager{
 
     }
 
-    entry fun configure(_: &AdminCap, icon_asset_manager: String, xcall_network_address: String, version: u64, ctx: &mut TxContext ) {
+    entry fun configure(_: &AdminCap, icon_asset_manager: String, version: u64, ctx: &mut TxContext ) {
         transfer::share_object(Config {
             id: object::new(ctx),
             icon_asset_manager: icon_asset_manager,
-            xcall_network_address: xcall_network_address,
             assets: bag::new(ctx),
             version: version
         });
@@ -287,10 +285,6 @@ module balanced::asset_manager{
 
     entry fun set_icon_asset_manager(_: &AdminCap, config: &mut Config, icon_asset_manager: String ){
         config.icon_asset_manager = icon_asset_manager
-    }
-
-    entry fun set_xcall_network_address(_: &AdminCap, config: &mut Config, xcall_network_address: String ){
-        config.xcall_network_address = xcall_network_address
     }
 
     fun set_version(config: &mut Config, version: u64 ){
