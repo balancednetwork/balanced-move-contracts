@@ -30,10 +30,9 @@ module balanced::asset_manager{
     const ENotDepositedAmount: u64 = 1;
     const ProtocolMismatch: u64 = 2;
     const UnknownMessageType: u64 = 3;
-    const EZeroAmountRequired: u64 = 4;
-    const EExceedsWithdrawLimit: u64 = 5;
-    const EIconAssetManagerRequired: u64 = 6;
-    const ENotUpgrade: u64 = 7;
+    const EExceedsWithdrawLimit: u64 = 4;
+    const EIconAssetManagerRequired: u64 = 5;
+    const ENotUpgrade: u64 = 6;
 
     const CURRENT_VERSION: u64 = 1;
     
@@ -82,7 +81,6 @@ module balanced::asset_manager{
     }
 
     entry fun register_token<T>(token: Coin<T>, config:&mut Config,  ctx: &mut TxContext) {
-       assert!(coin::value(&token)==0, EZeroAmountRequired);
        let mut asset_manager = AssetManager<T> {
             id: object::new(ctx),
             balance: balance::zero<T>()
@@ -170,11 +168,9 @@ module balanced::asset_manager{
     ) {
         let sender = ctx.sender();
         let from_address = address_to_hex_string(&sender);
-        //let from_address = network_address::to_string(&network_address::create(config.xcall_network_address, string_from));
         let mut to_address = from_address;
         if(option::is_some(&to)){
             to_address = address_to_hex_string(option::borrow(&to));
-            //to_address = network_address::to_string(&network_address::create(config.xcall_network_address, string_to));
         };
         let messageData = option::get_with_default(&data, b"");
         let self = get_asset_manager_mut<T>(config);

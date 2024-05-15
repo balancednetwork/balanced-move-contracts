@@ -35,7 +35,6 @@ module balanced::cross_transfer_revert {
         let cross_transfer_revert = XCrossTransferRevert {
             to: to,
             value: value,
-
         };
         cross_transfer_revert
     }
@@ -46,6 +45,17 @@ module balanced::cross_transfer_revert {
 
     public fun value(cross_transfer_revert: &XCrossTransferRevert): u64{
         cross_transfer_revert.value
+    }
+
+    #[test]
+    fun test_transfer_revert_encode_decode(){
+        let to = @0xBABE;
+        let xcall_revert = wrap_cross_transfer_revert(to, 90);
+        let data: vector<u8> = encode(&xcall_revert, b"test");
+        let result = decode(&data);
+        
+        assert!(result.to == to, 0x01);
+        assert!(result.value == 90, 0x01);
     }
 
 }

@@ -14,11 +14,8 @@ module balanced::configure_protocol {
         let mut list=vector::empty<vector<u8>>();
         vector::push_back(&mut list, encoder::encode(&method));
 
-        let source_encoded = encoder::encode_strings(&req.sources);
-        let dest_encoded = encoder::encode_strings(&req.destinations);
-
-        vector::push_back(&mut list, encoder::encode(&source_encoded));
-        vector::push_back(&mut list, encoder::encode(&dest_encoded));
+        vector::push_back(&mut list, encoder::encode_strings(&req.sources));
+        vector::push_back(&mut list, encoder::encode_strings(&req.destinations));
 
         let encoded=encoder::encode_list(&list,false);
         encoded
@@ -57,6 +54,30 @@ module balanced::configure_protocol {
 
     public fun destinations(protocols: &ConfigureProtocol): vector<String>{
         protocols.destinations
+    }
+
+    #[test]
+    fun test_protocols_encode_decode(){
+        let sources = vector[string::utf8(b"centralized"), string::utf8(b"icon"), string::utf8(b"sui")];
+        let destinations = vector[string::utf8(b"icon_centralized"), string::utf8(b"sui_centralized")];
+        let protocols: ConfigureProtocol = wrap_protocols(sources, destinations);
+        let data: vector<u8> = encode(&protocols, b"test");
+        let result = decode(&data);
+        
+        assert!(result.sources == sources, 0x01);
+        assert!(result.destinations == destinations, 0x01);
+    }
+
+    #[test]
+    fun test_empty_protocols_encode_decode(){
+        let sources = vector[];
+        let destinations = vector[];
+        let protocols: ConfigureProtocol = wrap_protocols(sources, destinations);
+        let data: vector<u8> = encode(&protocols, b"test");
+        let result = decode(&data);
+        
+        assert!(result.sources == sources, 0x01);
+        assert!(result.destinations == destinations, 0x01);
     }
 
 }

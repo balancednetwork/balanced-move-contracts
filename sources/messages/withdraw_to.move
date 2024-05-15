@@ -57,4 +57,17 @@ module balanced::withdraw_to {
         deposit_revert.amount
     }
 
+    #[test]
+    fun test_xtransfer_encode_decode(){
+        let token_address = string::utf8(b"sui/address");
+        let to = string::utf8(b"sui/to");
+        let withdraw = wrap_withdraw_to(token_address, to, 90);
+        let data: vector<u8> = encode(&withdraw, b"test");
+        let result = decode(&data);
+        
+        assert!(result.token_address == token_address, 0x01);
+        assert!(result.to == to, 0x01);
+        assert!(result.amount == 90, 0x01);
+    }
+
 }

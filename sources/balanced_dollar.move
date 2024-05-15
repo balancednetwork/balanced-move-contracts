@@ -98,9 +98,7 @@ module balanced::balanced_dollar {
         coin::burn(get_treasury_cap_mut(carrier), token);
 
         let fromAddress = address_to_hex_string(&ctx.sender());
-        //let fromAddress = network_address::to_string(&network_address::create(config.xcall_network_address, sender));
         let toAddress = address_to_hex_string(&to);
-        //let toAddress = network_address::to_string(&network_address::create(config.xcall_network_address, string_to));
 
         let xcallMessageStruct = wrap_cross_transfer(
             fromAddress,
@@ -124,7 +122,7 @@ module balanced::balanced_dollar {
         xcall::send_call(xcall_state, fee, idcap, config.icon_bnusd, envelope::encode(&envelope), ctx);
     }
 
-    entry fun execute_call<BALANCED_DOLLAR>(carier: &mut TreasuryCapCarrier<BALANCED_DOLLAR>, config: &Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+    entry fun execute_call(carier: &mut TreasuryCapCarrier<BALANCED_DOLLAR>, config: &Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
         let idcap = xcall_manager::get_idcap(xcall_manager_config);
         let ticket = xcall::execute_call(xcall, idcap, request_id, data, ctx);
         let msg = execute_ticket::message(&ticket);

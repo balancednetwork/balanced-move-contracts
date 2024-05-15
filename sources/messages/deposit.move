@@ -32,7 +32,7 @@ module balanced::deposit {
         let from = decoder::decode_string(vector::borrow(&decoded, 2));
         let to = decoder::decode_string(vector::borrow(&decoded, 3));
         let amount = decoder::decode_u64(vector::borrow(&decoded, 4));
-        let data = decoder::decode(vector::borrow(&decoded, 5));
+        let data = *vector::borrow(&decoded, 5);
         let req= wrap_deposit(
             token_address,
             from,
@@ -84,6 +84,22 @@ module balanced::deposit {
 
     public fun data(deposit_revert: &Deposit): vector<u8>{
         deposit_revert.data
+    }
+
+    #[test]
+    fun test_deposit_encode_decode(){
+        let token_address = string::utf8(b"sui/token_address");
+        let from = string::utf8(b"sui/from");
+        let to = string::utf8(b"sui/to");
+        let transfer = wrap_deposit(token_address, from, to, 90, b"");
+        let data: vector<u8> = encode(&transfer, b"test");
+        let result = decode(&data);
+        
+        assert!(result.token_address == token_address, 0x01);
+        assert!(result.from == from, 0x01);
+        assert!(result.to == to, 0x01);
+        assert!(result.amount == 90, 0x01);
+        assert!(result.data == b"", 0x01);
     }
 
 }

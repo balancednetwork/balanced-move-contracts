@@ -137,7 +137,7 @@ module balanced::balanced_dollar_test {
         let fee_amount = math::pow(10, 9 + 4);
         let fee = coin::mint_for_testing<SUI>(fee_amount, scenario.ctx());
         let mut treasury_cap = scenario.take_shared<TreasuryCapCarrier<BALANCED_DOLLAR>>();
-        balanced_dollar::execute_call<BALANCED_DOLLAR>(&mut treasury_cap, &config, &xcallManagerConfig, &mut xcall_state, fee, 1, data, scenario.ctx());
+        balanced_dollar::execute_call(&mut treasury_cap, &config, &xcallManagerConfig, &mut xcall_state, fee, 1, data, scenario.ctx());
 
         test_scenario::return_shared(config);
         test_scenario::return_shared(xcallManagerConfig);
@@ -178,7 +178,7 @@ module balanced::balanced_dollar_test {
         let fee = coin::mint_for_testing<SUI>(fee_amount, scenario.ctx());
 
         let mut treasury_cap = scenario.take_shared<TreasuryCapCarrier<BALANCED_DOLLAR>>();
-        balanced_dollar::execute_call<BALANCED_DOLLAR>(&mut treasury_cap, &config, &xcallManagerConfig, &mut xcall_state, fee, 1, data, scenario.ctx());
+        balanced_dollar::execute_call(&mut treasury_cap, &config, &xcallManagerConfig, &mut xcall_state, fee, 1, data, scenario.ctx());
 
         test_scenario::return_shared(config);
         test_scenario::return_shared(xcallManagerConfig);

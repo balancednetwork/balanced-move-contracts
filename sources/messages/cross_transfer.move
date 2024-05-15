@@ -71,4 +71,19 @@ module balanced::cross_transfer {
         cross_transfer.data
     }
 
+
+    #[test]
+    fun test_xtransfer_encode_decode(){
+        let from = string::utf8(b"sui/from");
+        let to = string::utf8(b"sui/to");
+        let transfer = wrap_cross_transfer(from, to, 90, b"");
+        let data: vector<u8> = encode(&transfer, b"test");
+        let result = decode(&data);
+        
+        assert!(result.from == from, 0x01);
+        assert!(result.to == to, 0x01);
+        assert!(result.value == 90, 0x01);
+        assert!(result.data == b"", 0x01);
+    }
+
 }

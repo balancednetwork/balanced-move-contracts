@@ -56,4 +56,17 @@ module balanced::deposit_revert {
         deposit_revert.amount
     }
 
+    #[test]
+    fun test_deposit_revert_encode_decode(){
+        let to = @0xBABE;
+        let token_address = string::utf8(b"sui/token_address");
+        let xcall_revert = wrap_deposit_revert( token_address, to, 90);
+        let data: vector<u8> = encode(&xcall_revert, b"test");
+        let result = decode(&data);
+        
+        assert!(result.token_address == token_address, 0x01);
+        assert!(result.to == to, 0x01);
+        assert!(result.amount == 90, 0x01);
+    }
+
 }
