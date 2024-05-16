@@ -156,7 +156,7 @@ module balanced::balanced_dollar {
         xcall::execute_call_result(xcall,ticket,true,fee,ctx);
     }
 
-    fun get_treasury_cap_mut<BALANCED_DOLLAR>(treasury_cap_carrier: &mut TreasuryCapCarrier<BALANCED_DOLLAR>): &mut TreasuryCap<BALANCED_DOLLAR> {
+    fun get_treasury_cap_mut(treasury_cap_carrier: &mut TreasuryCapCarrier<BALANCED_DOLLAR>): &mut TreasuryCap<BALANCED_DOLLAR> {
         &mut treasury_cap_carrier.treasury_cap
     }
 
