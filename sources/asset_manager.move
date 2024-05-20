@@ -226,7 +226,6 @@ module balanced::asset_manager{
     }
 
     entry fun execute_call<T>(config: &mut Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee:Coin<SUI>, c: &Clock, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
-        //debug::print(&id_to_hex_string(&xcall::get_id_cap_id(get_idcap(&config))));
         let ticket = xcall::execute_call(xcall, get_idcap(config), request_id, data, ctx);
         let msg = execute_ticket::message(&ticket);
         let from = execute_ticket::from(&ticket);
@@ -320,12 +319,6 @@ module balanced::asset_manager{
     entry fun migrate(_: &AdminCap, self: &mut Config) {
         assert!(get_version(self) < CURRENT_VERSION, ENotUpgrade);
         set_version(self, CURRENT_VERSION);
-    }
-
-    fun id_to_hex_string(id:&ID): String {
-        let bytes = object::id_to_bytes(id);
-        let hex_bytes = hex::encode(bytes);
-        string::utf8(hex_bytes)
     }
 
     #[test_only]
