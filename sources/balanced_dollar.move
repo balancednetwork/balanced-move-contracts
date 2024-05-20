@@ -5,7 +5,7 @@ module balanced::balanced_dollar {
     use sui::sui::SUI;
 
     use xcall::{main as xcall};
-    use xcall::xcall_state::{Storage as XCallState};
+    use xcall::xcall_state::{Storage as XCallState, IDCap};
     use xcall::envelope::{Self};
     use xcall::network_address::{Self};
     use xcall::execute_ticket::{Self};
@@ -29,6 +29,10 @@ module balanced::balanced_dollar {
 
     public struct BALANCED_DOLLAR has drop {}
 
+    public struct REGISTER_WITNESS has drop, store {}
+
+    public struct WitnessCarrier has key { id: UID, witness: REGISTER_WITNESS }
+
     public struct AdminCap has key{
         id: UID 
     }
@@ -41,7 +45,8 @@ module balanced::balanced_dollar {
     public struct Config has key, store{
         id: UID, 
         icon_bnusd: String,
-        version: u64
+        version: u64,
+        id_cap: IDCap
     }
 
     fun init(witness: BALANCED_DOLLAR, ctx: &mut TxContext) {
@@ -65,15 +70,34 @@ module balanced::balanced_dollar {
         transfer::transfer(AdminCap {
             id: object::new(ctx)
         }, ctx.sender());
+
+        transfer::transfer(
+            WitnessCarrier { id: object::new(ctx), witness:REGISTER_WITNESS{} },
+            ctx.sender()
+        );
         
     }
 
-    entry fun configure(_: &AdminCap, icon_bnusd: String, version: u64, ctx: &mut TxContext ){
+    fun get_witness(carrier: WitnessCarrier): REGISTER_WITNESS {
+        let WitnessCarrier { id, witness } = carrier;
+        id.delete();
+        witness
+    }
+
+    entry fun configure(_: &AdminCap, xcall_state: &XCallState, witness_carrier: WitnessCarrier, icon_bnusd: String, version: u64, ctx: &mut TxContext ){
+        let w = get_witness(witness_carrier);
+        let id_cap =   xcall::register_dapp(xcall_state, w, ctx);
+
         transfer::share_object(Config {
             id: object::new(ctx),
             icon_bnusd: icon_bnusd,
-            version: version
+            version: version,
+            id_cap: id_cap
         });
+    }
+
+    public fun get_idcap(config: &Config): &IDCap {
+        &config.id_cap
     }
 
     entry fun cross_transfer(
@@ -109,18 +133,16 @@ module balanced::balanced_dollar {
         );
 
         let (sources, destinations) = xcall_manager::get_protocals(xcall_manager_config);
-        let idcap = xcall_manager::get_idcap(xcall_manager_config);
 
         let xcallMessage = cross_transfer::encode(&xcallMessageStruct, CROSS_TRANSFER);
         let rollback = cross_transfer_revert::encode(&rollbackStruct, CROSS_TRANSFER_REVERT);
         
         let envelope = envelope::wrap_call_message_rollback(xcallMessage, rollback, sources, destinations);
-        xcall::send_call(xcall_state, fee, idcap, config.icon_bnusd, envelope::encode(&envelope), ctx);
+        xcall::send_call(xcall_state, fee, get_idcap(config), config.icon_bnusd, envelope::encode(&envelope), ctx);
     }
 
     entry fun execute_call(carier: &mut TreasuryCapCarrier<BALANCED_DOLLAR>, config: &Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
-        let idcap = xcall_manager::get_idcap(xcall_manager_config);
-        let ticket = xcall::execute_call(xcall, idcap, request_id, data, ctx);
+        let ticket = xcall::execute_call(xcall, get_idcap(config), request_id, data, ctx);
         let msg = execute_ticket::message(&ticket);
         let from = execute_ticket::from(&ticket);
         let protocols = execute_ticket::protocols(&ticket);

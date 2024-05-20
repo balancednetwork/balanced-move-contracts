@@ -6,9 +6,11 @@ module balanced::asset_manager{
     use sui::sui::SUI;
     use sui::clock::{Self, Clock};
     use sui::bag::{Self, Bag};
+    use sui::hex;
+    use std::debug;
 
     use xcall::{main as xcall};
-    use xcall::xcall_state::{Storage as XCallState};
+    use xcall::xcall_state::{Storage as XCallState, IDCap};
     use xcall::envelope::{Self};
     use xcall::network_address::{Self};
     use xcall::execute_ticket::{Self};
@@ -35,22 +37,27 @@ module balanced::asset_manager{
     const ENotUpgrade: u64 = 6;
 
     const CURRENT_VERSION: u64 = 1;
+
+    public struct REGISTER_WITNESS has drop, store {}
+
+    public struct WitnessCarrier has key { id: UID, witness: REGISTER_WITNESS }
     
     public struct AssetManager<phantom T> has key, store{
         id: UID,
-        balance: Balance<T>
+        balance: Balance<T>,
+        rate_limit: RateLimit<T>
     }
 
     public struct Config has key {
         id: UID, 
         icon_asset_manager: String,
         assets: Bag,
-        version: u64
+        version: u64,
+        id_cap: IDCap
     }
     
 
-    public struct RateLimit<phantom T> has key {
-        id: UID,
+    public struct RateLimit<phantom T> has copy, store {
         period: u64,
         percentage: u64,
         last_update: u64,
@@ -67,53 +74,67 @@ module balanced::asset_manager{
             id: object::new(ctx)
         }, ctx.sender());
 
+        transfer::transfer(
+            WitnessCarrier { id: object::new(ctx), witness:REGISTER_WITNESS{} },
+            ctx.sender()
+        );
+
     }
 
-    entry fun configure(_: &AdminCap, icon_asset_manager: String, version: u64, ctx: &mut TxContext ) {
+    fun get_witness(carrier: WitnessCarrier): REGISTER_WITNESS {
+        let WitnessCarrier { id, witness } = carrier;
+        id.delete();
+        witness
+    }
+
+    entry fun configure(_: &AdminCap, xcall_state: &XCallState, witness_carrier: WitnessCarrier, icon_asset_manager: String, version: u64, ctx: &mut TxContext ) {
+        let w = get_witness(witness_carrier);
+        let id_cap =   xcall::register_dapp(xcall_state, w, ctx);
+
         transfer::share_object(Config {
             id: object::new(ctx),
             icon_asset_manager: icon_asset_manager,
             assets: bag::new(ctx),
-            version: version
+            version: version,
+            id_cap: id_cap
         });
     }
 
-    entry fun register_token<T>(token: Coin<T>, config:&mut Config,  ctx: &mut TxContext) {
-       let mut asset_manager = AssetManager<T> {
-            id: object::new(ctx),
-            balance: balance::zero<T>()
-        };
-        coin::put<T>(&mut asset_manager.balance, token);
-        let token_type = string::from_ascii(*type_name::borrow_string(&type_name::get<T>()));
-        config.assets.add(token_type, asset_manager);
+    public fun get_idcap(config: &Config): &IDCap {
+        &config.id_cap
     }
 
-    entry fun configure_rate_limit<T> (
-        _: &AdminCap,
-        config: &Config,
-        c: &Clock,
-        period: u64,
-        percentage: u64,
-        ctx: &mut TxContext
-    ) {
-        let asset_manager = get_asset_manager<T>(config);
-        transfer::share_object(RateLimit<T> {
-            id: object::new(ctx),
+    entry fun register_token<T>(token: Coin<T>, config:&mut Config, c: &Clock,
+        period: u64, percentage: u64,  ctx: &mut TxContext) {
+        let rate_limit = RateLimit<T> {
             period: period,
             percentage: percentage,
             last_update: clock::timestamp_ms(c),
-            current_limit: (balance::value(&asset_manager.balance) * percentage) / POINTS
-        });
+            current_limit: 0
+        };
+
+       let mut asset_manager = AssetManager<T> {
+            id: object::new(ctx),
+            balance: balance::zero<T>(),
+            rate_limit: rate_limit
+        };
+        coin::put<T>(&mut asset_manager.balance, token);
+        let asset_manager_balance = &asset_manager.balance;
+        let rate_limit = &mut asset_manager.rate_limit;
+        rate_limit.current_limit = (balance::value(asset_manager_balance) * percentage) / POINTS;
+        let token_type = string::from_ascii(*type_name::borrow_string(&type_name::get<T>()));
+        config.assets.add(token_type, asset_manager)
     }
 
     entry fun reset_limit<T> (
         _: &AdminCap,
-        config: &Config,
-        rate_limit: &mut RateLimit<T>
+        config: &mut Config
     ) 
     {
-        let asset_manager = get_asset_manager<T>(config);
-        rate_limit.current_limit = (balance::value(&asset_manager.balance) *rate_limit.percentage) / POINTS
+        let asset_manager = get_asset_manager_mut<T>(config);
+        let rate_limit = &mut asset_manager.rate_limit;
+
+        rate_limit.current_limit = (balance::value(&asset_manager.balance) * rate_limit.percentage) / POINTS
     }
 
     public fun get_withdraw_limit<T>(config: &Config,
@@ -196,18 +217,17 @@ module balanced::asset_manager{
         let rollback = deposit_revert::encode(&rollbackMessage, DEPOSIT_REVERT_NAME);
 
        let(sources, destinations) = xcall_manager::get_protocals(xcall_manager_config); 
-       let idcap = xcall_manager::get_idcap(xcall_manager_config);
        let envelope = envelope::wrap_call_message_rollback(data, rollback, sources, destinations);
-       xcall::send_call(xcallState, fee, idcap, config.icon_asset_manager, envelope::encode(&envelope), ctx);
+       xcall::send_call(xcallState, fee, get_idcap(config), config.icon_asset_manager, envelope::encode(&envelope), ctx);
     }
 
     public fun get_withdraw_token_type(msg:vector<u8>): String{
         deposit::get_token_type(&msg)
     }
 
-    entry fun execute_call<T>(config: &mut Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee:Coin<SUI>, rate_limit: &mut RateLimit<T>, c: &Clock, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
-        let idcap = xcall_manager::get_idcap(xcall_manager_config);
-        let ticket = xcall::execute_call(xcall, idcap, request_id, data, ctx);
+    entry fun execute_call<T>(config: &mut Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee:Coin<SUI>, c: &Clock, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+        //debug::print(&id_to_hex_string(&xcall::get_id_cap_id(get_idcap(&config))));
+        let ticket = xcall::execute_call(xcall, get_idcap(config), request_id, data, ctx);
         let msg = execute_ticket::message(&ticket);
         let from = execute_ticket::from(&ticket);
         let protocols = execute_ticket::protocols(&ticket);
@@ -234,6 +254,7 @@ module balanced::asset_manager{
                 let to_address = network_address::addr(&network_address::from_string(withdraw_to::to(&message)));
                 let asset_manager = get_asset_manager_mut<T>(config);
                 let balance = &mut asset_manager.balance;
+                let rate_limit = &mut asset_manager.rate_limit;
                 withdraw(
                     balance,
                     rate_limit,
@@ -245,6 +266,7 @@ module balanced::asset_manager{
             } else if (method == DEPOSIT_REVERT_NAME) {
                 let asset_manager = get_asset_manager_mut<T>(config);
                 let balance = &mut asset_manager.balance;
+                let rate_limit = &mut asset_manager.rate_limit;
                 let message: DepositRevert = deposit_revert::decode(&msg);
                     withdraw(
                         balance,
@@ -298,6 +320,12 @@ module balanced::asset_manager{
     entry fun migrate(_: &AdminCap, self: &mut Config) {
         assert!(get_version(self) < CURRENT_VERSION, ENotUpgrade);
         set_version(self, CURRENT_VERSION);
+    }
+
+    fun id_to_hex_string(id:&ID): String {
+        let bytes = object::id_to_bytes(id);
+        let hex_bytes = hex::encode(bytes);
+        string::utf8(hex_bytes)
     }
 
     #[test_only]

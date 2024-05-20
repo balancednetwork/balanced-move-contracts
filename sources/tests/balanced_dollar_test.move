@@ -18,8 +18,8 @@ module balanced::balanced_dollar_test {
     use xcall::message_request::{Self};
     use xcall::network_address::{Self};
 
-    use balanced::xcall_manager::{Self, WitnessCarrier };
-    use balanced::balanced_dollar::{Self, BALANCED_DOLLAR, AdminCap, Config, TreasuryCapCarrier, configure, cross_transfer, get_treasury_cap_for_testing    };
+    use balanced::xcall_manager::{Self, WitnessCarrier as XcallManagerWitnessCarrier};
+    use balanced::balanced_dollar::{Self, BALANCED_DOLLAR, AdminCap, Config, TreasuryCapCarrier, configure, cross_transfer, get_treasury_cap_for_testing, WitnessCarrier    };
     
     use balanced::cross_transfer::{wrap_cross_transfer, encode};
     use balanced::cross_transfer_revert::{Self, wrap_cross_transfer_revert};
@@ -44,13 +44,14 @@ module balanced::balanced_dollar_test {
         scenario.next_tx(admin);
         let adminCap = scenario.take_from_sender<AdminCap>();
         let managerAdminCap = scenario.take_from_sender<xcall_manager::AdminCap>();
-        configure(&adminCap, string::utf8(b"icon/hx534"),  1,  scenario.ctx());
+        let xcall_state= scenario.take_shared<XCallState>();
+        let carrier = scenario.take_from_sender<WitnessCarrier>();
+        configure(&adminCap, &xcall_state, carrier, string::utf8(b"icon/hx534"),  1,  scenario.ctx());
 
         let sources = vector[string::utf8(b"centralized")];
         let destinations = vector[string::utf8(b"icon/hx234"), string::utf8(b"icon/hx334")];
-        let carrier = scenario.take_from_sender<WitnessCarrier>();
-        let xcall_state= scenario.take_shared<XCallState>();
-        xcall_manager::configure(&managerAdminCap, &xcall_state, carrier, string::utf8(ICON_BnUSD),  sources, destinations, 1, scenario.ctx());
+        let xm_carrier = scenario.take_from_sender<XcallManagerWitnessCarrier>();
+        xcall_manager::configure(&managerAdminCap, &xcall_state, xm_carrier, string::utf8(ICON_BnUSD),  sources, destinations, 1, scenario.ctx());
         test_scenario::return_shared<XCallState>(xcall_state);
         scenario.return_to_sender(adminCap);
         scenario.return_to_sender(managerAdminCap);
@@ -121,9 +122,11 @@ module balanced::balanced_dollar_test {
         let mut xcall_state = scenario.take_shared<XCallState>();
         let conn_cap = xcall_state::create_conn_cap_for_testing(&mut xcall_state);
 
+        let config = scenario.take_shared<Config>();
+
         let sources = vector[string::utf8(b"centralized")];
         let xcallManagerConfig: xcall_manager::Config  = scenario.take_shared<xcall_manager::Config>();
-        let sui_dapp = id_to_hex_string(&xcall_state::get_id_cap_id(xcall_manager::get_idcap(&xcallManagerConfig)));
+        let sui_dapp = id_to_hex_string(&xcall_state::get_id_cap_id(balanced_dollar::get_idcap(&config)));
         let icon_dapp = network_address::create(string::utf8(b"icon"), string::utf8(b"hx534"));
         let from_nid = string::utf8(b"icon");
         let request = message_request::create(icon_dapp, sui_dapp, 1, 1, data, sources);
@@ -132,7 +135,7 @@ module balanced::balanced_dollar_test {
 
         scenario.next_tx(ADMIN);
         
-        let config = scenario.take_shared<Config>();
+        
         
         let fee_amount = math::pow(10, 9 + 4);
         let fee = coin::mint_for_testing<SUI>(fee_amount, scenario.ctx());
@@ -162,9 +165,11 @@ module balanced::balanced_dollar_test {
         let mut xcall_state = scenario.take_shared<XCallState>();
         let conn_cap = xcall_state::create_conn_cap_for_testing(&mut xcall_state);
 
+        let config = scenario.take_shared<Config>();
+
         let sources = vector[string::utf8(b"centralized")];
         let xcallManagerConfig: xcall_manager::Config  = scenario.take_shared<xcall_manager::Config>();
-        let sui_dapp = id_to_hex_string(&xcall_state::get_id_cap_id(xcall_manager::get_idcap(&xcallManagerConfig)));
+        let sui_dapp = id_to_hex_string(&xcall_state::get_id_cap_id(balanced_dollar::get_idcap(&config)));
         let icon_dapp = network_address::create(string::utf8(b"icon"), string::utf8(b"hx534"));
         let from_nid = string::utf8(b"icon");
         let request = message_request::create(icon_dapp, sui_dapp, 2, 1, data, sources);
@@ -173,7 +178,7 @@ module balanced::balanced_dollar_test {
 
         scenario.next_tx(ADMIN);
         
-        let config = scenario.take_shared<Config>();
+        
         let fee_amount = math::pow(10, 9 + 4);
         let fee = coin::mint_for_testing<SUI>(fee_amount, scenario.ctx());
 

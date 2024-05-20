@@ -19,9 +19,9 @@ module balanced::asset_manager_test {
     use xcall::message_request::{Self};
     use xcall::network_address::{Self};
 
-    use balanced::asset_manager::{Self, Config, AdminCap, configure, configure_rate_limit, deposit, register_token, RateLimit };
-    use balanced::xcall_manager::{Self, WitnessCarrier };
+    use balanced::asset_manager::{Self, Config, AdminCap, configure, deposit, register_token, WitnessCarrier };
     use balanced::balanced_dollar::{BALANCED_DOLLAR};
+    use balanced::xcall_manager::{Self, WitnessCarrier as XcallManagerWitnessCarrier};
 
     use balanced::withdraw_to::{wrap_withdraw_to, encode};
     use balanced::deposit_revert::{Self, wrap_deposit_revert};
@@ -42,15 +42,16 @@ module balanced::asset_manager_test {
         scenario.next_tx(admin);
         let adminCap = scenario.take_from_sender<AdminCap>();
         let managerAdminCap = scenario.take_from_sender<xcall_manager::AdminCap>();
-        configure(&adminCap, string::utf8(ICON_ASSET_MANAGER), 1, scenario.ctx());
+        let carrier = scenario.take_from_sender<WitnessCarrier>();
+        let xcall_state= scenario.take_shared<XCallState>();
+        configure(&adminCap, &xcall_state, carrier, string::utf8(ICON_ASSET_MANAGER), 1, scenario.ctx());
       
 
         scenario.next_tx(admin);
         let sources = vector[string::utf8(b"centralized")];
         let destinations = vector[string::utf8(b"icon/hx234"), string::utf8(b"icon/hx334")];
-        let carrier = scenario.take_from_sender<WitnessCarrier>();
-        let xcall_state= scenario.take_shared<XCallState>();
-        xcall_manager::configure(&managerAdminCap, &xcall_state, carrier, string::utf8(ICON_ASSET_MANAGER),  sources, destinations, 1, scenario.ctx());
+        let xm_carrier = scenario.take_from_sender<XcallManagerWitnessCarrier>();
+        xcall_manager::configure(&managerAdminCap, &xcall_state, xm_carrier, string::utf8(ICON_ASSET_MANAGER),  sources, destinations, 1, scenario.ctx());
         test_scenario::return_shared<XCallState>(xcall_state);
         scenario.return_to_sender(adminCap);
         scenario.return_to_sender(managerAdminCap);
@@ -71,22 +72,17 @@ module balanced::asset_manager_test {
     }
 
     #[test_only]
-    fun configure_rate_limit_test(): Scenario {
+    fun register_token_test(): Scenario {
         let admin = ADMIN;
         let mut scenario = setup_test(ADMIN);
         let deposited = coin::mint_for_testing<BALANCED_DOLLAR>(0, scenario.ctx());
         let mut config = scenario.take_shared<Config>();
-        register_token(deposited, &mut config, scenario.ctx());
+        let c = clock::create_for_testing(scenario.ctx());
+        register_token(deposited, &mut config, &c, 9000, 1000, scenario.ctx());
+        clock::destroy_for_testing(c);
+        test_scenario::return_shared(config);
         scenario.next_tx(admin);
 
-        let adminCap = scenario.take_from_sender<AdminCap>();
-        let c = clock::create_for_testing(scenario.ctx());
-        configure_rate_limit<BALANCED_DOLLAR>(&adminCap, &config, &c, 9000, 1000, scenario.ctx());
-        test_scenario::return_shared(config);
-        scenario.return_to_sender(adminCap);
-        clock::destroy_for_testing(c);
-        
-        scenario.next_tx(admin);
         scenario
     }
 
@@ -110,9 +106,11 @@ module balanced::asset_manager_test {
         let deposited = coin::mint_for_testing<BALANCED_DOLLAR>(0, scenario.ctx());
         let mut config = scenario.take_shared<Config>();
         // Act
-        register_token(deposited, &mut config, scenario.ctx());
+        let c = clock::create_for_testing(scenario.ctx());
+        register_token(deposited, &mut config, &c, 9000, 1000, scenario.ctx());
         scenario.next_tx(ADMIN);
         debug::print(&config);
+        clock::destroy_for_testing(c);
 
         test_scenario::return_shared(config);
 
@@ -125,7 +123,8 @@ module balanced::asset_manager_test {
         let mut scenario = setup_test(ADMIN);
         let token = coin::mint_for_testing<BALANCED_DOLLAR>(0, scenario.ctx());
         let mut config = scenario.take_shared<Config>();
-        register_token(token, &mut config, scenario.ctx());
+        let c = clock::create_for_testing(scenario.ctx());
+        register_token(token, &mut config, &c, 9000, 1000, scenario.ctx());
         scenario.next_tx(ADMIN);
         scenario = setup_connection(scenario, string::utf8(b"sui"), ADMIN);
 
@@ -140,6 +139,7 @@ module balanced::asset_manager_test {
         test_scenario::return_shared(config);
         test_scenario::return_shared(xcallManagerConfig);
         test_scenario::return_shared(xcall_state);
+        clock::destroy_for_testing(c);
         
         scenario.end();
      }
@@ -148,9 +148,9 @@ module balanced::asset_manager_test {
     #[test]
     fun withdraw_to_execute_call() {
         // Arrange
-        let mut scenario = configure_rate_limit_test();
+        let mut scenario = register_token_test();
         let mut config = scenario.take_shared<Config>();
-        let mut rate_limit = scenario.take_shared<RateLimit<BALANCED_DOLLAR>>();
+        //let mut rate_limit = scenario.take_shared<RateLimit<BALANCED_DOLLAR>>();
         let c = clock::create_for_testing(scenario.ctx());
         scenario.next_tx(ADMIN);
 
@@ -165,7 +165,7 @@ module balanced::asset_manager_test {
 
         let xcallManagerConfig: xcall_manager::Config  = scenario.take_shared<xcall_manager::Config>();
         let sources = vector[string::utf8(b"centralized")];
-        let sui_dapp = id_to_hex_string(&xcall_state::get_id_cap_id(xcall_manager::get_idcap(&xcallManagerConfig)));
+        let sui_dapp = id_to_hex_string(&xcall_state::get_id_cap_id(asset_manager::get_idcap(&config)));
         let icon_dapp = network_address::create(string::utf8(b"icon"), string::utf8(b"hx734"));
         let from_nid = string::utf8(b"icon");
         let request = message_request::create(icon_dapp, sui_dapp, 1, 1, data, sources);
@@ -180,10 +180,10 @@ module balanced::asset_manager_test {
         let deposit_fee = coin::mint_for_testing<SUI>(fee_amount, scenario.ctx());
         let deposited = coin::mint_for_testing<BALANCED_DOLLAR>(bnusd_amount, scenario.ctx());
         deposit(&mut xcall_state, &mut config, &xcallManagerConfig, deposit_fee, deposited, bnusd_amount, option::none(), option::none(), scenario.ctx());
-        asset_manager::execute_call<BALANCED_DOLLAR>( &mut config, &xcallManagerConfig, &mut xcall_state, fee, &mut rate_limit, &c, 1, data, scenario.ctx());
+        asset_manager::execute_call<BALANCED_DOLLAR>( &mut config, &xcallManagerConfig, &mut xcall_state, fee, &c, 1, data, scenario.ctx());
 
         test_scenario::return_shared(config);
-        test_scenario::return_shared(rate_limit);
+        //test_scenario::return_shared(rate_limit);
         test_scenario::return_shared(xcallManagerConfig);
         test_scenario::return_shared(xcall_state);
         clock::destroy_for_testing(c);
@@ -194,9 +194,9 @@ module balanced::asset_manager_test {
     #[test]
     fun rollback_execute_call() {
         // Arrange
-        let mut scenario = configure_rate_limit_test();
+        let mut scenario = register_token_test();
         let mut config = scenario.take_shared<Config>();
-        let mut rate_limit = scenario.take_shared<RateLimit<BALANCED_DOLLAR>>();
+        //let mut rate_limit = scenario.take_shared<RateLimit<BALANCED_DOLLAR>>();
          let c = clock::create_for_testing(scenario.ctx());
         scenario.next_tx(ADMIN);
 
@@ -211,7 +211,8 @@ module balanced::asset_manager_test {
 
         let sources = vector[string::utf8(b"centralized")];
         let xcallManagerConfig: xcall_manager::Config  = scenario.take_shared<xcall_manager::Config>();
-        let sui_dapp = id_to_hex_string(&xcall_state::get_id_cap_id(xcall_manager::get_idcap(&xcallManagerConfig)));
+        let sui_dapp = id_to_hex_string(&xcall_state::get_id_cap_id(asset_manager::get_idcap(&config)));
+        debug::print(&sui_dapp);
         let icon_dapp = network_address::create(string::utf8(b"icon"), string::utf8(b"hx734"));
         let from_nid = string::utf8(b"icon");
         let request = message_request::create(icon_dapp, sui_dapp, 2, 1, data, sources);
@@ -225,10 +226,10 @@ module balanced::asset_manager_test {
         let deposit_fee = coin::mint_for_testing<SUI>(fee_amount, scenario.ctx());
         let deposited = coin::mint_for_testing<BALANCED_DOLLAR>(bnusd_amount, scenario.ctx());
         deposit( &mut xcall_state, &mut config, &xcallManagerConfig, deposit_fee, deposited, bnusd_amount, option::none(), option::none(), scenario.ctx());
-        asset_manager::execute_call<BALANCED_DOLLAR>(&mut config, &xcallManagerConfig, &mut xcall_state, fee, &mut rate_limit, &c, 1, data, scenario.ctx());
+        asset_manager::execute_call<BALANCED_DOLLAR>(&mut config, &xcallManagerConfig, &mut xcall_state, fee, &c, 1, data, scenario.ctx());
 
         test_scenario::return_shared(config);
-        test_scenario::return_shared(rate_limit);
+        //test_scenario::return_shared(rate_limit);
         test_scenario::return_shared(xcallManagerConfig);
         test_scenario::return_shared(xcall_state);
         clock::destroy_for_testing(c);
