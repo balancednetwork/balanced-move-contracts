@@ -107,7 +107,7 @@ module balanced::asset_manager{
         period: u64, percentage: u64,  ctx: &mut TxContext) {
         let token_type = string::from_ascii(*type_name::borrow_string(&type_name::get<T>()));
         if(config.assets.contains(token_type)){
-            abort EAlreadyRegistered;
+            abort EAlreadyRegistered
         };
         
         let rate_limit = RateLimit<T> {
