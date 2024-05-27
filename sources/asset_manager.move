@@ -6,8 +6,6 @@ module balanced::asset_manager{
     use sui::sui::SUI;
     use sui::clock::{Self, Clock};
     use sui::bag::{Self, Bag};
-    use sui::hex;
-    use std::debug;
 
     use xcall::{main as xcall};
     use xcall::xcall_state::{Storage as XCallState, IDCap};
@@ -35,6 +33,7 @@ module balanced::asset_manager{
     const EExceedsWithdrawLimit: u64 = 4;
     const EIconAssetManagerRequired: u64 = 5;
     const ENotUpgrade: u64 = 6;
+    const EAlreadyRegistered: u64 = 7;
 
     const CURRENT_VERSION: u64 = 1;
 
@@ -104,8 +103,13 @@ module balanced::asset_manager{
         &config.id_cap
     }
 
-    entry fun register_token<T>(token: Coin<T>, config:&mut Config, c: &Clock,
+    entry fun register_token<T>(_: &AdminCap, config:&mut Config, c: &Clock,
         period: u64, percentage: u64,  ctx: &mut TxContext) {
+        let token_type = string::from_ascii(*type_name::borrow_string(&type_name::get<T>()));
+        if(config.assets.contains(token_type)){
+            abort EAlreadyRegistered;
+        };
+        
         let rate_limit = RateLimit<T> {
             period: period,
             percentage: percentage,
@@ -118,11 +122,11 @@ module balanced::asset_manager{
             balance: balance::zero<T>(),
             rate_limit: rate_limit
         };
-        coin::put<T>(&mut asset_manager.balance, token);
+
         let asset_manager_balance = &asset_manager.balance;
         let rate_limit = &mut asset_manager.rate_limit;
         rate_limit.current_limit = (balance::value(asset_manager_balance) * percentage) / POINTS;
-        let token_type = string::from_ascii(*type_name::borrow_string(&type_name::get<T>()));
+        
         config.assets.add(token_type, asset_manager)
     }
 
@@ -181,15 +185,15 @@ module balanced::asset_manager{
         fee: Coin<SUI>,
         token: Coin<T>, 
         amount: u64, 
-        to: Option<address>, 
+        to: Option<String>, 
         data: Option<vector<u8>>, 
         ctx: &mut TxContext
     ) {
         let sender = ctx.sender();
         let from_address = address_to_hex_string(&sender);
-        let mut to_address = from_address;
+        let mut to_address = b"".to_string();
         if(option::is_some(&to)){
-            to_address = address_to_hex_string(option::borrow(&to));
+            to_address = *option::borrow(&to);
         };
         let messageData = option::get_with_default(&data, b"");
         let self = get_asset_manager_mut<T>(config);
