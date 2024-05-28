@@ -107,7 +107,7 @@ module balanced::balanced_dollar {
         fee: Coin<SUI>,
         token: Coin<BALANCED_DOLLAR>,
         carrier: &mut TreasuryCapCarrier<BALANCED_DOLLAR>,
-        to: address,
+        to: String,
         amount: u64,
         data: Option<vector<u8>>,
         ctx: &mut TxContext
@@ -116,19 +116,19 @@ module balanced::balanced_dollar {
         assert!(amount > 0, AmountLessThanMinimumAmount);
         assert!(coin::value(&token) == amount, ENotTransferredAmount);
         coin::burn(get_treasury_cap_mut(carrier), token);
+        let from = ctx.sender();
 
-        let fromAddress = address_to_hex_string(&ctx.sender());
-        let toAddress = address_to_hex_string(&to);
+        let fromAddress = address_to_hex_string(&from);
 
         let xcallMessageStruct = wrap_cross_transfer(
             fromAddress,
-            toAddress,
+            to,
             amount,
             messageData
         );
 
         let rollbackStruct = wrap_cross_transfer_revert(
-            to,
+            from,
             amount
         );
 

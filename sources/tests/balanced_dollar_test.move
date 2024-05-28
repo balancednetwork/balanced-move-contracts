@@ -25,7 +25,7 @@ module balanced::balanced_dollar_test {
     use balanced::cross_transfer_revert::{Self, wrap_cross_transfer_revert};
 
     const ADMIN: address = @0xBABE;
-    const TO: address = @0xBABE1;
+    const TO: vector<u8> = b"sui/address";
     
     const ICON_BnUSD: vector<u8> = b"icon/hx734";
 
@@ -100,7 +100,7 @@ module balanced::balanced_dollar_test {
 
         let mut xcall_state= scenario.take_shared<XCallState>();
     
-        cross_transfer(&mut xcall_state, &config, &xcallManagerConfig, fee, deposited, &mut treasury_cap, TO,  bnusd_amount, option::none(), scenario.ctx());
+        cross_transfer(&mut xcall_state, &config, &xcallManagerConfig, fee, deposited, &mut treasury_cap, TO.to_string(),  bnusd_amount, option::none(), scenario.ctx());
         test_scenario::return_shared(xcallManagerConfig);
         test_scenario::return_shared( config);
         test_scenario::return_shared(xcall_state);
