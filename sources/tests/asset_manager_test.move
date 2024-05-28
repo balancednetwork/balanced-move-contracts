@@ -148,6 +148,35 @@ module balanced::asset_manager_test {
         scenario.end();
      }
 
+     #[test]
+    fun test_deposit_for_return_remaining_amount() {
+        // Arrange
+        let mut scenario = setup_test(ADMIN);
+        let mut config = scenario.take_shared<Config>();
+        let c = clock::create_for_testing(scenario.ctx());
+        let adminCap = scenario.take_from_sender<AdminCap>();
+        register_token<BALANCED_DOLLAR>(&adminCap, &mut config, &c, 9000, 1000, scenario.ctx());
+
+        scenario.next_tx(ADMIN);
+        scenario = setup_connection(scenario, string::utf8(b"sui"), ADMIN);
+
+        let xcallManagerConfig: xcall_manager::Config  = scenario.take_shared<xcall_manager::Config>();
+        let fee_amount = math::pow(10, 9 + 4);
+        let bnusd_amount = math::pow(10, 18);
+        let fee = coin::mint_for_testing<SUI>(fee_amount, scenario.ctx());
+        let deposited = coin::mint_for_testing<BALANCED_DOLLAR>(bnusd_amount*2, scenario.ctx());
+        let mut xcall_state= scenario.take_shared<XCallState>();
+        deposit(&mut xcall_state, &mut config, &xcallManagerConfig, fee, deposited, bnusd_amount, option::none(), option::none(), scenario.ctx());
+        
+        test_scenario::return_shared(config);
+        test_scenario::return_shared(xcallManagerConfig);
+        test_scenario::return_shared(xcall_state);
+        test_scenario::return_to_sender(&scenario, adminCap);
+        clock::destroy_for_testing(c);
+        
+        scenario.end();
+     }
+
 
     #[test]
     fun withdraw_to_execute_call() {

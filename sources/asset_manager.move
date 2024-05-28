@@ -183,7 +183,7 @@ module balanced::asset_manager{
         config: &mut Config, 
         xcall_manager_config: &XcallManagerConfig, 
         fee: Coin<SUI>,
-        token: Coin<T>, 
+        mut token: Coin<T>, 
         amount: u64, 
         to: Option<String>, 
         data: Option<vector<u8>>, 
@@ -199,8 +199,10 @@ module balanced::asset_manager{
         let self = get_asset_manager_mut<T>(config);
         
         assert!(amount >= 0, EAmountLessThanMinimumAmount);
-        assert!(coin::value(&token) == amount, ENotDepositedAmount);
-        coin::put<T>(&mut self.balance, token);
+        assert!(coin::value(&token) >= amount, ENotDepositedAmount);
+        let deposit_token = token.split(amount, ctx);
+        coin::put<T>(&mut self.balance, deposit_token);
+        transfer::public_transfer(token, sender);
 
         let token_address = string::from_ascii(type_name::get_address(&type_name::get<T>()));
         let depositMessage = deposit::wrap_deposit(
