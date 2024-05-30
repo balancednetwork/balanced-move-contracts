@@ -281,13 +281,13 @@ module balanced::asset_manager_test {
         let mut xcall_state = scenario.take_shared<XCallState>();
         let conn_cap = xcall_state::create_conn_cap_for_testing(&mut xcall_state);
 
-        let sources = vector[string::utf8(b"centralized")];
+        //let sources = vector[string::utf8(b"centralized")];
         let xcallManagerConfig: xcall_manager::Config  = scenario.take_shared<xcall_manager::Config>();
-        let sui_dapp = id_to_hex_string(&xcall_state::get_id_cap_id(asset_manager::get_idcap(&config)));
-        let icon_dapp = network_address::create(string::utf8(b"icon"), string::utf8(b"hx734"));
+        //let sui_dapp = id_to_hex_string(&xcall_state::get_id_cap_id(asset_manager::get_idcap(&config)));
+        //let icon_dapp = network_address::create(string::utf8(b"icon"), string::utf8(b"hx734"));
         let from_nid = string::utf8(b"icon");
-        let id_cap = asset_manager::get_idcap(&config);
-        let request = message_request::create(icon_dapp, sui_dapp, 2, 1, data, sources);
+        // let id_cap = asset_manager::get_idcap(&config);
+        // let request = message_request::create(icon_dapp, sui_dapp, 2, 1, data, sources);
         //let message = cs_message::encode(&cs_message::new(cs_message::result_code(), b""));
         
         let response = message_result::create(1, message_result::failure(),b"");

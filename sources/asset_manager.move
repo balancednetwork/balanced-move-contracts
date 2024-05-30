@@ -1,7 +1,6 @@
 module balanced::asset_manager{
     use std::string::{Self, String};
     use std::type_name::{Self};
-    use std::debug::{Self};
     use sui::coin::{Self, Coin};
     use sui::balance::{Self, Balance};
     use sui::sui::SUI;

@@ -10,6 +10,7 @@ module balanced::balanced_dollar {
     use xcall::envelope::{Self};
     use xcall::network_address::{Self};
     use xcall::execute_ticket::{Self};
+    use xcall::rollback_ticket::{Self};
 
     use balanced::xcall_manager::{Self, Config as XcallManagerConfig};
     use balanced::cross_transfer::{Self, wrap_cross_transfer, XCrossTransfer};
@@ -155,29 +156,38 @@ module balanced::balanced_dollar {
         );
 
         let method: vector<u8> = cross_transfer::get_method(&msg);
+
         assert!(
-            method == CROSS_TRANSFER || method == CROSS_TRANSFER_REVERT, 
+            method == CROSS_TRANSFER, 
             UnknownMessageType
         );
 
-        if (method == CROSS_TRANSFER) {
-            assert!(from == network_address::from_string(config.icon_bnusd), OnlyICONBnUSD);
-            let message: XCrossTransfer = cross_transfer::decode(&msg);
-            let string_to = network_address::addr(&network_address::from_string(cross_transfer::to(&message)));
-            let to = address_from_hex_string(&string_to);
-            let amount: u64 = translate_incoming_amount(cross_transfer::value(&message));
+        assert!(from == network_address::from_string(config.icon_bnusd), OnlyICONBnUSD);
+        let message: XCrossTransfer = cross_transfer::decode(&msg);
+        let string_to = network_address::addr(&network_address::from_string(cross_transfer::to(&message)));
+        let to = address_from_hex_string(&string_to);
+        let amount: u64 = translate_incoming_amount(cross_transfer::value(&message));
 
-            coin::mint_and_transfer(get_treasury_cap_mut(carier),  amount, to, ctx)
-        } else if (method == CROSS_TRANSFER_REVERT) {
-            let message: XCrossTransferRevert = cross_transfer_revert::decode(&msg);
-            let to = cross_transfer_revert::to(&message);
-            let amount: u64 = cross_transfer_revert::value(&message);
-
-            coin::mint_and_transfer(get_treasury_cap_mut(carier),  amount, to, ctx)
-        };
-
+        coin::mint_and_transfer(get_treasury_cap_mut(carier),  amount, to, ctx);
         xcall::execute_call_result(xcall,ticket,true,fee,ctx);
     }
+
+    entry fun execute_rollback(carier: &mut TreasuryCapCarrier<BALANCED_DOLLAR>, config: &Config, xcall:&mut XCallState, sn: u128, ctx:&mut TxContext){
+        let ticket = xcall::execute_rollback(xcall, get_idcap(config), sn, ctx);
+        let msg = rollback_ticket::rollback(&ticket);
+        let method: vector<u8> = cross_transfer::get_method(&msg);
+        assert!(
+            method == CROSS_TRANSFER_REVERT,
+            UnknownMessageType
+        );
+
+        let message: XCrossTransferRevert = cross_transfer_revert::decode(&msg);
+        let to = cross_transfer_revert::to(&message);
+        let amount: u64 = cross_transfer_revert::value(&message);
+        coin::mint_and_transfer(get_treasury_cap_mut(carier),  amount, to, ctx);
+        xcall::execute_rollback_result(xcall,ticket,true)
+    }
+
 
     fun get_treasury_cap_mut(treasury_cap_carrier: &mut TreasuryCapCarrier<BALANCED_DOLLAR>): &mut TreasuryCap<BALANCED_DOLLAR> {
         &mut treasury_cap_carrier.treasury_cap
