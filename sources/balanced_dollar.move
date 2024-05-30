@@ -3,6 +3,7 @@ module balanced::balanced_dollar {
     use sui::url;
     use sui::coin::{Self, Coin, TreasuryCap};
     use sui::sui::SUI;
+    use sui::math;
 
     use xcall::{main as xcall};
     use xcall::xcall_state::{Storage as XCallState, IDCap};
@@ -123,7 +124,7 @@ module balanced::balanced_dollar {
         let xcallMessageStruct = wrap_cross_transfer(
             fromAddress,
             to,
-            amount,
+            translate_outgoing_amount(amount),
             messageData
         );
 
@@ -164,7 +165,7 @@ module balanced::balanced_dollar {
             let message: XCrossTransfer = cross_transfer::decode(&msg);
             let string_to = network_address::addr(&network_address::from_string(cross_transfer::to(&message)));
             let to = address_from_hex_string(&string_to);
-            let amount: u64 = cross_transfer::value(&message);
+            let amount: u64 = translate_incoming_amount(cross_transfer::value(&message));
 
             coin::mint_and_transfer(get_treasury_cap_mut(carier),  amount, to, ctx)
         } else if (method == CROSS_TRANSFER_REVERT) {
@@ -199,6 +200,14 @@ module balanced::balanced_dollar {
         set_version(self, CURRENT_VERSION);
     }
     
+    fun translate_outgoing_amount(amount: u64): u128 {
+        let multiplier = math::pow(10, 9) as u128;
+        (amount as u128) * multiplier 
+    }
+
+    fun translate_incoming_amount(amount: u128): u64 {
+        (amount / ( math::pow(10, 9) as u128 ) ) as u64
+    }
 
     #[test_only]
     public fun get_treasury_cap_for_testing<BALANCED_DOLLAR>(treasury_cap_carrier: &mut TreasuryCapCarrier<BALANCED_DOLLAR>): &mut TreasuryCap<BALANCED_DOLLAR> {

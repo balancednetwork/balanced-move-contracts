@@ -75,7 +75,6 @@ module balanced::balanced_dollar_test {
         // Assert
         let scenario = setup_test(ADMIN);
         let config = scenario.take_shared<Config>();
-        debug::print(&config);
         test_scenario::return_shared(config);
         scenario.end();
     }
@@ -114,7 +113,7 @@ module balanced::balanced_dollar_test {
         let mut scenario = setup_test(ADMIN);
         scenario.next_tx(ADMIN);
 
-        let bnusd_amount = math::pow(10, 18);
+        let bnusd_amount = math::pow(10, 18) as u128;
         let message = wrap_cross_transfer(string::utf8(FROM_ADDRESS),  string::utf8(TO_ADDRESS), bnusd_amount, b"");
         let data = encode(&message, b"xCrossTransfer");
         
@@ -197,7 +196,9 @@ module balanced::balanced_dollar_test {
     fun id_to_hex_string(id:&ID): String {
         let bytes = object::id_to_bytes(id);
         let hex_bytes = hex::encode(bytes);
-        string::utf8(hex_bytes)
+        let mut prefix = string::utf8(b"0x");
+        prefix.append(string::utf8(hex_bytes));
+        prefix
     }
 
 }

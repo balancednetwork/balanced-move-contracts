@@ -60,7 +60,6 @@ module balanced::xcall_manager_test {
         // Assert
         let scenario = setup_test(ADMIN);
         let config = scenario.take_shared<Config>();
-        debug::print(&config);
         test_scenario::return_shared(config);
         scenario.end();
     }
@@ -120,7 +119,9 @@ module balanced::xcall_manager_test {
     fun id_to_hex_string(id:&ID): String {
         let bytes = object::id_to_bytes(id);
         let hex_bytes = hex::encode(bytes);
-        string::utf8(hex_bytes)
+        let mut prefix = string::utf8(b"0x");
+        prefix.append(string::utf8(hex_bytes));
+        prefix
     }
 
 }

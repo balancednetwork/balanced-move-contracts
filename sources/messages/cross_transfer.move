@@ -8,7 +8,7 @@ module balanced::cross_transfer {
     public struct XCrossTransfer has drop{
         from: String, 
         to: String,
-        value: u64,
+        value: u128,
         data: vector<u8>
     }
 
@@ -17,7 +17,7 @@ module balanced::cross_transfer {
         vector::push_back(&mut list, encoder::encode(&method));
         vector::push_back(&mut list,encoder::encode_string(&req.from));
         vector::push_back(&mut list,encoder::encode_string(&req.to));
-        vector::push_back(&mut list,encoder::encode_u64(req.value));
+        vector::push_back(&mut list,encoder::encode_u128(req.value));
         vector::push_back(&mut list,encoder::encode(&req.data));
 
         let encoded=encoder::encode_list(&list,false);
@@ -28,7 +28,7 @@ module balanced::cross_transfer {
         let decoded=decoder::decode_list(bytes);
         let from = decoder::decode_string(vector::borrow(&decoded, 1));
         let to = decoder::decode_string(vector::borrow(&decoded, 2));
-        let value = decoder::decode_u64(vector::borrow(&decoded, 3));
+        let value = decoder::decode_u128(vector::borrow(&decoded, 3));
         let data = *vector::borrow(&decoded, 4);
         let req= XCrossTransfer {
             from,
@@ -39,7 +39,7 @@ module balanced::cross_transfer {
         req
     }
 
-     public fun wrap_cross_transfer(from: String, to: String, value: u64, data: vector<u8>): XCrossTransfer {
+     public fun wrap_cross_transfer(from: String, to: String, value: u128, data: vector<u8>): XCrossTransfer {
         let cross_transfer = XCrossTransfer {
             from: from,
             to: to,
@@ -63,7 +63,7 @@ module balanced::cross_transfer {
         cross_transfer.to
     }
 
-    public fun value(cross_transfer: &XCrossTransfer): u64{
+    public fun value(cross_transfer: &XCrossTransfer): u128{
         cross_transfer.value
     }
 

@@ -1,6 +1,7 @@
 module balanced::asset_manager{
     use std::string::{Self, String};
     use std::type_name::{Self};
+    use std::debug::{Self};
     use sui::coin::{Self, Coin};
     use sui::balance::{Self, Balance};
     use sui::sui::SUI;
@@ -12,6 +13,7 @@ module balanced::asset_manager{
     use xcall::envelope::{Self};
     use xcall::network_address::{Self};
     use xcall::execute_ticket::{Self};
+    use xcall::rollback_ticket::{Self};
 
     use balanced::xcall_manager::{Self, Config as XcallManagerConfig};
     use balanced::deposit::{Self};
@@ -245,7 +247,7 @@ module balanced::asset_manager{
 
         let method: vector<u8> = deposit::get_method(&msg);
         assert!(
-            method == WITHDRAW_TO_NAME || method == WITHDRAW_NATIVE_TO_NAME || method == DEPOSIT_REVERT_NAME,
+            method == WITHDRAW_TO_NAME || method == WITHDRAW_NATIVE_TO_NAME,
             UnknownMessageType
         );
         
@@ -253,41 +255,58 @@ module balanced::asset_manager{
         
         let message_token_type = deposit::get_token_type(&msg);
         if(token_type == message_token_type){
-            if (method == WITHDRAW_TO_NAME || method == WITHDRAW_NATIVE_TO_NAME) {
-                assert!(from == network_address::from_string(config.icon_asset_manager), EIconAssetManagerRequired);
-                let message: WithdrawTo = withdraw_to::decode(&msg);
-                let to_address = network_address::addr(&network_address::from_string(withdraw_to::to(&message)));
-                let asset_manager = get_asset_manager_mut<T>(config);
-                let balance = &mut asset_manager.balance;
-                let rate_limit = &mut asset_manager.rate_limit;
-                withdraw(
-                    balance,
-                    rate_limit,
-                    c,
-                    address_from_hex_string(&to_address),
-                    withdraw_to::amount(&message),
-                    ctx
-                );
-            } else if (method == DEPOSIT_REVERT_NAME) {
-                let asset_manager = get_asset_manager_mut<T>(config);
-                let balance = &mut asset_manager.balance;
-                let rate_limit = &mut asset_manager.rate_limit;
-                let message: DepositRevert = deposit_revert::decode(&msg);
-                    withdraw(
-                        balance,
-                        rate_limit,
-                        c,
-                        deposit_revert::to(&message),
-                        deposit_revert::amount(&message),
-                        ctx
-                    );
-                
-            };
+            assert!(from == network_address::from_string(config.icon_asset_manager), EIconAssetManagerRequired);
+            let message: WithdrawTo = withdraw_to::decode(&msg);
+            let to_address = network_address::addr(&network_address::from_string(withdraw_to::to(&message)));
+            let asset_manager = get_asset_manager_mut<T>(config);
+            let balance = &mut asset_manager.balance;
+            let rate_limit = &mut asset_manager.rate_limit;
+            withdraw(
+                balance,
+                rate_limit,
+                c,
+                address_from_hex_string(&to_address),
+                withdraw_to::amount(&message),
+                ctx
+            );
             xcall::execute_call_result(xcall,ticket,true,fee,ctx);
         }else{
             xcall::execute_call_result(xcall,ticket,false,fee,ctx);
         };
         
+    }
+
+    entry fun execute_rollback<T>(config: &mut Config, xcall:&mut XCallState, sn: u128, c: &Clock,  ctx:&mut TxContext){
+        let ticket = xcall::execute_rollback(xcall, get_idcap(config), sn, ctx);
+        let msg = rollback_ticket::rollback(&ticket);
+        let method: vector<u8> = deposit::get_method(&msg);
+        assert!(
+            method == DEPOSIT_REVERT_NAME,
+            UnknownMessageType
+        );
+
+        let token_type = string::from_ascii(*type_name::borrow_string(&type_name::get<T>()));
+        
+        let message_token_type = deposit::get_token_type(&msg);
+        if(token_type == message_token_type){
+
+            let asset_manager = get_asset_manager_mut<T>(config);
+            let balance = &mut asset_manager.balance;
+            let rate_limit = &mut asset_manager.rate_limit;
+            let message: DepositRevert = deposit_revert::decode(&msg);
+            withdraw(
+                balance,
+                rate_limit,
+                c,
+                deposit_revert::to(&message),
+                deposit_revert::amount(&message),
+                ctx
+            );
+
+            xcall::execute_rollback_result(xcall,ticket,true);
+        }else{
+            xcall::execute_rollback_result(xcall,ticket,false);
+        };
     }
 
     fun get_asset_manager_mut<T>(config: &mut Config): &mut AssetManager<T> {
