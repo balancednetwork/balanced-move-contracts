@@ -35,6 +35,7 @@ module balanced::asset_manager{
     const EIconAssetManagerRequired: u64 = 5;
     const ENotUpgrade: u64 = 6;
     const EAlreadyRegistered: u64 = 7;
+    const EWrongVersion: u64 = 8;
 
     const CURRENT_VERSION: u64 = 1;
 
@@ -101,11 +102,13 @@ module balanced::asset_manager{
     }
 
     public fun get_idcap(config: &Config): &IDCap {
+        enforce_version(config);
         &config.id_cap
     }
 
     entry fun register_token<T>(_: &AdminCap, config:&mut Config, c: &Clock,
         period: u64, percentage: u64,  ctx: &mut TxContext) {
+        enforce_version(config);
         let token_type = string::from_ascii(*type_name::borrow_string(&type_name::get<T>()));
         if(config.assets.contains(token_type)){
             abort EAlreadyRegistered
@@ -136,6 +139,7 @@ module balanced::asset_manager{
         config: &mut Config
     ) 
     {
+        enforce_version(config);
         let asset_manager = get_asset_manager_mut<T>(config);
         let rate_limit = &mut asset_manager.rate_limit;
 
@@ -144,6 +148,7 @@ module balanced::asset_manager{
 
     public fun get_withdraw_limit<T>(config: &Config,
         rate_limit: &RateLimit<T>, c: &Clock): u64  {
+        enforce_version(config);
         let asset_manager = get_asset_manager<T>(config);
 
         let tokenBalance = balance::value(&asset_manager.balance);
@@ -190,6 +195,7 @@ module balanced::asset_manager{
         data: Option<vector<u8>>, 
         ctx: &mut TxContext
     ) {
+        enforce_version(config);
         let sender = ctx.sender();
         let from_address = address_to_hex_string(&sender);
         let mut to_address = b"".to_string();
@@ -233,6 +239,7 @@ module balanced::asset_manager{
     }
 
     entry fun execute_call<T>(config: &mut Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee:Coin<SUI>, c: &Clock, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+        enforce_version(config);
         let ticket = xcall::execute_call(xcall, get_idcap(config), request_id, data, ctx);
         let msg = execute_ticket::message(&ticket);
         let from = execute_ticket::from(&ticket);
@@ -276,6 +283,7 @@ module balanced::asset_manager{
     }
 
     entry fun execute_rollback<T>(config: &mut Config, xcall:&mut XCallState, sn: u128, c: &Clock,  ctx:&mut TxContext){
+        enforce_version(config);
         let ticket = xcall::execute_rollback(xcall, get_idcap(config), sn, ctx);
         let msg = rollback_ticket::rollback(&ticket);
         let method: vector<u8> = deposit::get_method(&msg);
@@ -329,6 +337,7 @@ module balanced::asset_manager{
     }
 
     entry fun set_icon_asset_manager(_: &AdminCap, config: &mut Config, icon_asset_manager: String ){
+        enforce_version(config);
         config.icon_asset_manager = icon_asset_manager
     }
 
@@ -338,6 +347,10 @@ module balanced::asset_manager{
 
     public fun get_version(config: &mut Config): u64{
         config.version
+    }
+
+    fun enforce_version(self:&Config){
+        assert!(self.version==CURRENT_VERSION, EWrongVersion);
     }
 
     entry fun migrate(_: &AdminCap, self: &mut Config) {

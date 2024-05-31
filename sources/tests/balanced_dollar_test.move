@@ -5,7 +5,6 @@
 module balanced::balanced_dollar_test {
     use sui::test_scenario::{Self, next_tx, ctx, Scenario};
     use std::string::{Self, String};
-    use std::debug::{Self};
 
     use sui::coin::{Self};
     use sui::sui::SUI;
@@ -198,8 +197,7 @@ module balanced::balanced_dollar_test {
         scenario.next_tx(ADMIN);
 
         let bnusd_amount = math::pow(10, 18);
-        let message = wrap_cross_transfer_revert( ADDRESS_TO_ADDRESS, bnusd_amount);
-        let data = cross_transfer_revert::encode(&message, b"xCrossTransferRevert");
+        
 
         scenario = setup_connection( scenario, string::utf8(b"icon"), ADMIN);
         let mut xcall_state = scenario.take_shared<XCallState>();

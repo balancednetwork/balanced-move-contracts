@@ -14,6 +14,7 @@ module balanced::xcall_manager{
     const ProtocolMismatch: u64 = 1;
     const EIconAssetManagerRequired: u64 = 2;
     const ENotUpgrade: u64 = 3;
+    const EWrongVersion: u64 = 4;
 
     const CURRENT_VERSION: u64 = 1;
 
@@ -72,18 +73,22 @@ module balanced::xcall_manager{
     }
 
     public fun get_idcap(config: &Config): &IDCap {
+        enforce_version(config);
         &config.id_cap
     }
 
     public fun get_protocals(config: &Config):(vector<String>, vector<String>){
+        enforce_version(config);
         (config.sources, config.destinations)
     }
 
     entry fun propose_removal(_: &AdminCap, config: &mut Config, protocol: String) {
+        enforce_version(config);
         config.proposed_protocol_to_remove = protocol;
     }
 
     entry fun execute_call(config: &mut Config, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+        enforce_version(config);
         let ticket = xcall::execute_call(xcall, &config.id_cap, request_id, data, ctx);
         let msg = execute_ticket::message(&ticket);
         let from = execute_ticket::from(&ticket);
@@ -112,6 +117,7 @@ module balanced::xcall_manager{
     public fun verify_protocols(
        config: &Config, protocols: &vector<String>
     ): bool {
+        enforce_version(config);
         verify_protocols_unordered(protocols, &config.sources)
     }
 
@@ -144,6 +150,7 @@ module balanced::xcall_manager{
     }
 
     public fun get_modified_protocols(config: &Config): vector<String> {
+        enforce_version(config);
         assert!(config.proposed_protocol_to_remove != string::utf8(b""), NoProposalForRemovalExists);
 
         let mut modifiedProtocols = vector::empty<String>();
@@ -160,14 +167,17 @@ module balanced::xcall_manager{
     }
 
     entry fun set_icon_governance(_: &AdminCap, config: &mut Config, icon_governance: String ){
+        enforce_version(config);
         config.icon_governance = icon_governance
     }
 
     entry fun set_sources(_: &AdminCap, config: &mut Config, sources: vector<String> ){
+        enforce_version(config);
         config.sources = sources
     }
 
     entry fun set_destinations(_: &AdminCap, config: &mut Config, destinations:  vector<String> ){
+        enforce_version(config);
         config.destinations = destinations
     }
 
@@ -177,6 +187,10 @@ module balanced::xcall_manager{
 
     public fun get_version(config: &mut Config): u64{
         config.version
+    }
+
+    fun enforce_version(self: &Config){
+        assert!(self.version==CURRENT_VERSION, EWrongVersion);
     }
 
     entry fun migrate(_: &AdminCap, self: &mut Config) {

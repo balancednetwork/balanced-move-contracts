@@ -5,7 +5,6 @@
 module balanced::xcall_manager_test {
     use sui::test_scenario::{Self, next_tx, ctx, Scenario};
     use std::string::{Self, String};
-    use std::debug;
 
     use sui::coin::{Self};
     use sui::sui::SUI;

@@ -11,7 +11,6 @@ module balanced::asset_manager_test {
     use sui::math;
     use sui::hex;
     use sui::clock::{Self};
-    use std::debug;
 
     use xcall::xcall_state::{Self, Storage as XCallState};
     use xcall::main::{Self as xcall, init_xcall_state};
@@ -273,9 +272,6 @@ module balanced::asset_manager_test {
         scenario.next_tx(ADMIN);
 
         let bnusd_amount = math::pow(10, 9);
-        let token_type = string::from_ascii(*type_name::borrow_string(&type_name::get<BALANCED_DOLLAR>()));
-        let message = wrap_deposit_revert(token_type, ADDRESS_TO_ADDRESS, bnusd_amount);
-        let data = deposit_revert::encode(&message, b"DepositRevert");
         
         scenario = setup_connection( scenario, string::utf8(b"icon"), ADMIN);
         let mut xcall_state = scenario.take_shared<XCallState>();

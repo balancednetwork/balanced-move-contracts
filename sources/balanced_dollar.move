@@ -23,6 +23,7 @@ module balanced::balanced_dollar {
     const UnknownMessageType: u64 = 4;
     const ENotTransferredAmount: u64 = 5;
     const ENotUpgrade: u64 = 6;
+    const EWrongVersion: u64 = 7;
 
     const CROSS_TRANSFER: vector<u8> = b"xCrossTransfer";
     const CROSS_TRANSFER_REVERT: vector<u8> = b"xCrossTransferRevert";
@@ -99,6 +100,7 @@ module balanced::balanced_dollar {
     }
 
     public fun get_idcap(config: &Config): &IDCap {
+        enforce_version(config);
         &config.id_cap
     }
 
@@ -114,6 +116,7 @@ module balanced::balanced_dollar {
         data: Option<vector<u8>>,
         ctx: &mut TxContext
     ) {
+        enforce_version(config);
         let messageData = option::get_with_default(&data, b"");
         assert!(amount > 0, AmountLessThanMinimumAmount);
         assert!(coin::value(&token) == amount, ENotTransferredAmount);
@@ -144,6 +147,7 @@ module balanced::balanced_dollar {
     }
 
     entry fun execute_call(carier: &mut TreasuryCapCarrier<BALANCED_DOLLAR>, config: &Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+        enforce_version(config);
         let ticket = xcall::execute_call(xcall, get_idcap(config), request_id, data, ctx);
         let msg = execute_ticket::message(&ticket);
         let from = execute_ticket::from(&ticket);
@@ -173,6 +177,7 @@ module balanced::balanced_dollar {
     }
 
     entry fun execute_rollback(carier: &mut TreasuryCapCarrier<BALANCED_DOLLAR>, config: &Config, xcall:&mut XCallState, sn: u128, ctx:&mut TxContext){
+        enforce_version(config);
         let ticket = xcall::execute_rollback(xcall, get_idcap(config), sn, ctx);
         let msg = rollback_ticket::rollback(&ticket);
         let method: vector<u8> = cross_transfer::get_method(&msg);
@@ -194,6 +199,7 @@ module balanced::balanced_dollar {
     }
 
     entry fun set_icon_bnusd(_: &AdminCap, config: &mut Config, icon_bnusd: String ){
+        enforce_version(config);
         config.icon_bnusd = icon_bnusd
     }
 
@@ -203,6 +209,10 @@ module balanced::balanced_dollar {
 
     public fun get_version(config: &mut Config): u64{
         config.version
+    }
+
+    fun enforce_version(self: &Config){
+        assert!(self.version==CURRENT_VERSION, EWrongVersion);
     }
 
     entry fun migrate(_: &AdminCap, self: &mut Config) {
