@@ -19,7 +19,8 @@ module balanced::balanced_dollar_test {
     use xcall::message_result::{Self};
 
     use balanced::xcall_manager::{Self, WitnessCarrier as XcallManagerWitnessCarrier};
-    use balanced::balanced_dollar::{Self, BALANCED_DOLLAR, AdminCap, Config, TreasuryCapCarrier, configure, cross_transfer, get_treasury_cap_for_testing, WitnessCarrier    };
+    use balanced::balanced_dollar::{Self, BALANCED_DOLLAR, AdminCap as BNUSD_ADMIN_CAP, TreasuryCapCarrier, get_treasury_cap_for_testing};
+    use balanced::balanced_dollar_crosschain::{Self, AdminCap, Config, configure, cross_transfer, WitnessCarrier    };
     
     use balanced::cross_transfer::{wrap_cross_transfer, encode};
     use balanced::cross_transfer_revert::{Self, wrap_cross_transfer_revert};
@@ -38,7 +39,9 @@ module balanced::balanced_dollar_test {
         let mut scenario = test_scenario::begin(admin);
         balanced_dollar::init_test(scenario.ctx());
         scenario.next_tx(admin);
-        scenario = init_xcall_state(admin,scenario);
+        balanced_dollar_crosschain::init_test(scenario.ctx());
+        scenario.next_tx(admin);
+        scenario = init_xcall_state(admin, scenario);
         scenario.next_tx(admin);
         xcall_manager::init_test(scenario.ctx());
         scenario.next_tx(admin);
@@ -125,7 +128,7 @@ module balanced::balanced_dollar_test {
 
         let sources = vector[string::utf8(b"centralized")];
         let xcallManagerConfig: xcall_manager::Config  = scenario.take_shared<xcall_manager::Config>();
-        let sui_dapp = id_to_hex_string(&xcall_state::get_id_cap_id(balanced_dollar::get_idcap(&config)));
+        let sui_dapp = id_to_hex_string(&xcall_state::get_id_cap_id(balanced_dollar_crosschain::get_idcap(&config)));
         let icon_dapp = network_address::create(string::utf8(b"icon"), string::utf8(b"hx534"));
         let from_nid = string::utf8(b"icon");
         let request = message_request::create(icon_dapp, sui_dapp, 1, 1, data, sources);
@@ -137,12 +140,14 @@ module balanced::balanced_dollar_test {
         let fee_amount = math::pow(10, 9 + 4);
         let fee = coin::mint_for_testing<SUI>(fee_amount, scenario.ctx());
         let mut treasury_cap = scenario.take_shared<TreasuryCapCarrier<BALANCED_DOLLAR>>();
-        balanced_dollar::execute_call(&mut treasury_cap, &config, &xcallManagerConfig, &mut xcall_state, fee, 1, data, scenario.ctx());
+        let bnusdAdminCap = scenario.take_from_sender<BNUSD_ADMIN_CAP>();
+        balanced_dollar_crosschain::execute_call(&bnusdAdminCap, &mut treasury_cap, &config, &xcallManagerConfig, &mut xcall_state, fee, 1, data, scenario.ctx());
 
         test_scenario::return_shared(config);
         test_scenario::return_shared(xcallManagerConfig);
         test_scenario::return_shared(xcall_state);
         test_scenario::return_shared(treasury_cap);
+        scenario.return_to_sender(bnusdAdminCap);
         
         scenario.end();
     }
@@ -223,13 +228,14 @@ module balanced::balanced_dollar_test {
         cross_transfer(&mut xcall_state, &config, &xcallManagerConfig, fee, deposited, &mut treasury_cap, TO.to_string(),  bnusd_amount, option::none(), scenario.ctx());
         xcall::handle_message(&mut xcall_state, &conn_cap, from_nid, message, scenario.ctx());
 
-        
-        balanced_dollar::execute_rollback(&mut treasury_cap, &config,  &mut xcall_state, 1, scenario.ctx());
+        let bnusdAdminCap = scenario.take_from_sender<BNUSD_ADMIN_CAP>();
+        balanced_dollar_crosschain::execute_rollback(&bnusdAdminCap, &mut treasury_cap, &config,  &mut xcall_state, 1, scenario.ctx());
 
         test_scenario::return_shared(config);
         test_scenario::return_shared(xcallManagerConfig);
         test_scenario::return_shared(xcall_state);
         test_scenario::return_shared(treasury_cap);
+        scenario.return_to_sender(bnusdAdminCap);
         
         scenario.end();
     }
