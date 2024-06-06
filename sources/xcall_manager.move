@@ -4,7 +4,7 @@ module balanced::xcall_manager{
     use sui::sui::{SUI};
 
     use xcall::{main as xcall};
-    use xcall::xcall_state::{IDCap, Storage as XCallState};
+    use xcall::xcall_state::{Self, IDCap, Storage as XCallState};
     use xcall::network_address::{Self};
     use xcall::execute_ticket::{Self};
 
@@ -31,7 +31,8 @@ module balanced::xcall_manager{
         destinations: vector<String>,
         proposed_protocol_to_remove: String,
         version: u64,
-        id_cap: IDCap
+        id_cap: IDCap,
+        xcall_id: ID
     }
 
     public struct AdminCap has key {
@@ -50,9 +51,10 @@ module balanced::xcall_manager{
         );
     }
 
-    entry fun configure(_: &AdminCap, xcall_state: &XCallState, witness_carrier: WitnessCarrier, icon_governance: String, sources: vector<String>, destinations: vector<String>, version: u64, ctx: &mut TxContext ){
+    entry fun configure(_: &AdminCap, storage: &XCallState, witness_carrier: WitnessCarrier, icon_governance: String, sources: vector<String>, destinations: vector<String>, version: u64, ctx: &mut TxContext ){
         let w = get_witness(witness_carrier);
-        let id_cap =   xcall::register_dapp(xcall_state, w, ctx);
+        let id_cap =   xcall::register_dapp(storage, w, ctx);
+        let xcall_id = xcall_state::get_id_cap_xcall(&id_cap);
 
         transfer::share_object(Config {
             id: object::new(ctx),
@@ -61,13 +63,18 @@ module balanced::xcall_manager{
             destinations: destinations,
             proposed_protocol_to_remove: string::utf8(b""),
             version: version,
-            id_cap: id_cap
+            id_cap: id_cap,
+            xcall_id: xcall_id
         });
 
     }
 
     public fun get_id(config: &Config): ID{
         config.id.to_inner()
+    }
+
+    public fun get_xcall_id(config: &Config): ID{
+        config.xcall_id
     }
 
     fun get_witness(carrier: WitnessCarrier): REGISTER_WITNESS {
@@ -89,6 +96,10 @@ module balanced::xcall_manager{
     entry fun propose_removal(_: &AdminCap, config: &mut Config, protocol: String) {
         enforce_version(config);
         config.proposed_protocol_to_remove = protocol;
+    }
+
+    entry fun get_execute_call_params(config: &Config): (ID){
+        (get_xcall_id(config))
     }
 
     entry fun execute_call(config: &mut Config, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){

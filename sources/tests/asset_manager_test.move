@@ -12,7 +12,7 @@ module balanced::asset_manager_test {
     use sui::hex;
     use sui::clock::{Self};
 
-    use xcall::xcall_state::{Self, Storage as XCallState};
+    use xcall::xcall_state::{Self, Storage as XCallState, ConnCap};
     use xcall::main::{Self as xcall, init_xcall_state};
     use xcall::cs_message::{Self};
     use xcall::message_request::{Self};
@@ -28,7 +28,7 @@ module balanced::asset_manager_test {
 
     const ICON_ASSET_MANAGER: vector<u8> = b"icon/hx734";
     const ADMIN: address = @0xBABE;
-    const TO_ADDRESS: vector<u8>  = b"sui/0000000000000000000000000000000000000000000000000000000000001234";
+    const TO_ADDRESS: vector<u8>  = b"0000000000000000000000000000000000000000000000000000000000001234";
     const ADDRESS_TO_ADDRESS: address = @0x0000000000000000000000000000000000000000000000000000000000001234;
 
     #[test_only]
@@ -46,7 +46,7 @@ module balanced::asset_manager_test {
         let carrier = scenario.take_from_sender<WitnessCarrier>();
         let xcall_state= scenario.take_shared<XCallState>();
 
-        let sources = vector[string::utf8(b"centralized")];
+        let sources = vector[string::utf8(b"centralized-1")];
         let destinations = vector[string::utf8(b"icon/hx234"), string::utf8(b"icon/hx334")];
         let xm_carrier = scenario.take_from_sender<XcallManagerWitnessCarrier>();
         xcall_manager::configure(&managerAdminCap, &xcall_state, xm_carrier, string::utf8(ICON_ASSET_MANAGER),  sources, destinations, 1, scenario.ctx());
@@ -68,7 +68,7 @@ module balanced::asset_manager_test {
     fun setup_connection(mut scenario: Scenario, from_nid: String, admin:address): Scenario {
         let mut storage = scenario.take_shared<XCallState>();
         let adminCap = scenario.take_from_sender<xcall_state::AdminCap>();
-        xcall::register_connection(&mut storage, &adminCap,from_nid, string::utf8(b"centralized"), scenario.ctx());
+        xcall::register_connection(&mut storage, &adminCap,from_nid, string::utf8(b"centralized-1"), admin, scenario.ctx());
         test_scenario::return_shared(storage);
         test_scenario::return_to_sender(&scenario, adminCap);
         scenario.next_tx(admin);
@@ -82,7 +82,7 @@ module balanced::asset_manager_test {
         let mut config = scenario.take_shared<Config>();
         let c = clock::create_for_testing(scenario.ctx());
         let adminCap = scenario.take_from_sender<AdminCap>();
-        register_token<BALANCED_DOLLAR>(&adminCap, &mut config, &c, 9000, 1000, scenario.ctx());
+        register_token<BALANCED_DOLLAR>(&adminCap, &mut config, &c, 86400, 300, scenario.ctx());
         clock::destroy_for_testing(c);
         test_scenario::return_shared(config);
         test_scenario::return_to_sender(&scenario, adminCap);
@@ -111,7 +111,7 @@ module balanced::asset_manager_test {
         // Act
         let c = clock::create_for_testing(scenario.ctx());
         let adminCap = scenario.take_from_sender<AdminCap>();
-        register_token<BALANCED_DOLLAR>(&adminCap, &mut config, &c, 9000, 1000, scenario.ctx());
+        register_token<BALANCED_DOLLAR>(&adminCap, &mut config, &c, 86400, 300, scenario.ctx());
         scenario.next_tx(ADMIN);
         test_scenario::return_to_sender(&scenario, adminCap);
         clock::destroy_for_testing(c);
@@ -128,7 +128,7 @@ module balanced::asset_manager_test {
         let mut config = scenario.take_shared<Config>();
         let c = clock::create_for_testing(scenario.ctx());
         let adminCap = scenario.take_from_sender<AdminCap>();
-        register_token<BALANCED_DOLLAR>(&adminCap, &mut config, &c, 9000, 1000, scenario.ctx());
+        register_token<BALANCED_DOLLAR>(&adminCap, &mut config, &c, 86400, 300, scenario.ctx());
 
         scenario.next_tx(ADMIN);
         scenario = setup_connection(scenario, string::utf8(b"sui"), ADMIN);
@@ -157,7 +157,7 @@ module balanced::asset_manager_test {
         let mut config = scenario.take_shared<Config>();
         let c = clock::create_for_testing(scenario.ctx());
         let adminCap = scenario.take_from_sender<AdminCap>();
-        register_token<BALANCED_DOLLAR>(&adminCap, &mut config, &c, 9000, 1000, scenario.ctx());
+        register_token<BALANCED_DOLLAR>(&adminCap, &mut config, &c, 86400, 300, scenario.ctx());
 
         scenario.next_tx(ADMIN);
         scenario = setup_connection(scenario, string::utf8(b"sui"), ADMIN);
@@ -195,10 +195,11 @@ module balanced::asset_manager_test {
         
         scenario = setup_connection( scenario, string::utf8(b"icon"), ADMIN);
         let mut xcall_state = scenario.take_shared<XCallState>();
-        let conn_cap = xcall_state::create_conn_cap_for_testing(&mut xcall_state);
+        scenario.next_tx(ADMIN);
+        let conn_cap = test_scenario::take_from_sender<ConnCap>(&scenario);
 
         let xcallManagerConfig: xcall_manager::Config  = scenario.take_shared<xcall_manager::Config>();
-        let sources = vector[string::utf8(b"centralized")];
+        let sources = vector[string::utf8(b"centralized-1")];
         let sui_dapp = id_to_hex_string(&xcall_state::get_id_cap_id(asset_manager::get_idcap(&config)));
         let icon_dapp = network_address::create(string::utf8(b"icon"), string::utf8(b"hx734"));
         let from_nid = string::utf8(b"icon");
@@ -219,6 +220,7 @@ module balanced::asset_manager_test {
         test_scenario::return_shared(config);
         test_scenario::return_shared(xcallManagerConfig);
         test_scenario::return_shared(xcall_state);
+        scenario.return_to_sender(conn_cap);
         clock::destroy_for_testing(c);
         
         scenario.end();
@@ -236,8 +238,8 @@ module balanced::asset_manager_test {
         
         scenario = setup_connection( scenario, string::utf8(b"icon"), ADMIN);
         let mut xcall_state = scenario.take_shared<XCallState>();
-        let conn_cap = xcall_state::create_conn_cap_for_testing(&mut xcall_state);
-
+        let conn_cap = test_scenario::take_from_sender<ConnCap>(&scenario);
+        scenario.next_tx(ADMIN);
         let xcallManagerConfig: xcall_manager::Config  = scenario.take_shared<xcall_manager::Config>();
         let from_nid = string::utf8(b"icon");
        
@@ -255,6 +257,7 @@ module balanced::asset_manager_test {
         test_scenario::return_shared(config);
         test_scenario::return_shared(xcallManagerConfig);
         test_scenario::return_shared(xcall_state);
+        scenario.return_to_sender(conn_cap);
         clock::destroy_for_testing(c);
         
         scenario.end();

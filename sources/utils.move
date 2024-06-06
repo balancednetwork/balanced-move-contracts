@@ -19,8 +19,9 @@ module balanced::balanced_utils {
 
     #[test]
     fun test_address_conversion(){
-        let a = @0xBABE;
+        let a = @0xef9d29652f9b26481bfb76dd918905769fab14f1ec3cb8c04d8847fd5b223d3b;
         let a_string = address_to_hex_string(&a);
+        assert!(string::utf8(b"ef9d29652f9b26481bfb76dd918905769fab14f1ec3cb8c04d8847fd5b223d3b") == a_string);
         let result = address_from_hex_string(&a_string);
         assert!(a == result, 0x01);
     }

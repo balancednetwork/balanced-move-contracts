@@ -8,7 +8,7 @@ module balanced::asset_manager{
     use sui::bag::{Self, Bag};
 
     use xcall::{main as xcall};
-    use xcall::xcall_state::{Storage as XCallState, IDCap};
+    use xcall::xcall_state::{Self, Storage as XCallState, IDCap};
     use xcall::envelope::{Self};
     use xcall::network_address::{Self};
     use xcall::execute_ticket::{Self};
@@ -90,10 +90,11 @@ module balanced::asset_manager{
         witness
     }
 
-    entry fun configure(_: &AdminCap, xcall_manager_config: &XcallManagerConfig, xcall_state: &XCallState, witness_carrier: WitnessCarrier, icon_asset_manager: String, version: u64, ctx: &mut TxContext ) {
+    entry fun configure(_: &AdminCap, xcall_manager_config: &XcallManagerConfig, storage: &XCallState, witness_carrier: WitnessCarrier, icon_asset_manager: String, version: u64, ctx: &mut TxContext ) {
         let w = get_witness(witness_carrier);
-        let id_cap =   xcall::register_dapp(xcall_state, w, ctx);
+        let id_cap =   xcall::register_dapp(storage, w, ctx);
         let xcall_manager_id = xcall_manager::get_id(xcall_manager_config);
+        let xcall_id = xcall_state::get_id_cap_xcall(&id_cap);
 
         transfer::share_object(Config {
             id: object::new(ctx),
@@ -102,7 +103,7 @@ module balanced::asset_manager{
             version: version,
             id_cap: id_cap,
             xcall_manager_id: xcall_manager_id,
-            xcall_id: xcall_manager_id  //todo::change it
+            xcall_id: xcall_id 
         });
     }
 
@@ -142,6 +143,7 @@ module balanced::asset_manager{
 
         let asset_manager_balance = &asset_manager.balance;
         let rate_limit = &mut asset_manager.rate_limit;
+        //validate percentage
         rate_limit.current_limit = (balance::value(asset_manager_balance) * percentage) / POINTS;
         
         config.assets.add(token_type, asset_manager)
@@ -181,6 +183,9 @@ module balanced::asset_manager{
         timeDiff = if(timeDiff > period){ period } else { timeDiff };
 
         let addedAllowedWithdrawal = (maxWithdraw * timeDiff) / period;
+        let current_limit = rate_limit.current_limit;
+        
+        assert!(addedAllowedWithdrawal <= current_limit, EExceedsWithdrawLimit ); //change message
         let mut limit = rate_limit.current_limit - addedAllowedWithdrawal;
         limit = if(tokenBalance > limit){ limit } else { tokenBalance };
         limit = if(limit > maxLimit){ limit } else { maxLimit };
@@ -280,7 +285,7 @@ module balanced::asset_manager{
         if(token_type == message_token_type){
             assert!(from == network_address::from_string(config.icon_asset_manager), EIconAssetManagerRequired);
             let message: WithdrawTo = withdraw_to::decode(&msg);
-            let to_address = network_address::addr(&network_address::from_string(withdraw_to::to(&message)));
+            let to_address = withdraw_to::to(&message); //network_address::addr(&network_address::from_string(withdraw_to::to(&message)));
             let asset_manager = get_asset_manager_mut<T>(config);
             let balance = &mut asset_manager.balance;
             let rate_limit = &mut asset_manager.rate_limit;
@@ -313,7 +318,6 @@ module balanced::asset_manager{
         
         let message_token_type = deposit::get_token_type(&msg);
         if(token_type == message_token_type){
-
             let asset_manager = get_asset_manager_mut<T>(config);
             let balance = &mut asset_manager.balance;
             let rate_limit = &mut asset_manager.rate_limit;

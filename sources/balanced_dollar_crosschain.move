@@ -5,7 +5,7 @@ module balanced::balanced_dollar_crosschain {
     use sui::math;
 
     use xcall::{main as xcall};
-    use xcall::xcall_state::{Storage as XCallState, IDCap};
+    use xcall::xcall_state::{Self, Storage as XCallState, IDCap};
     use xcall::envelope::{Self};
     use xcall::network_address::{Self};
     use xcall::execute_ticket::{Self};
@@ -65,10 +65,11 @@ module balanced::balanced_dollar_crosschain {
         witness
     }
 
-    entry fun configure(_: &AdminCap, xcall_manager_config: &XcallManagerConfig, xcall_state: &XCallState, witness_carrier: WitnessCarrier, icon_bnusd: String, version: u64, ctx: &mut TxContext ){
+    entry fun configure(_: &AdminCap, xcall_manager_config: &XcallManagerConfig, storage: &XCallState, witness_carrier: WitnessCarrier, icon_bnusd: String, version: u64, ctx: &mut TxContext ){
         let w = get_witness(witness_carrier);
-        let id_cap =   xcall::register_dapp(xcall_state, w, ctx);
+        let id_cap =   xcall::register_dapp(storage, w, ctx);
         let xcall_manager_id = xcall_manager::get_id(xcall_manager_config);
+        let xcall_id = xcall_state::get_id_cap_xcall(&id_cap);
 
         transfer::share_object(Config {
             id: object::new(ctx),
@@ -76,7 +77,7 @@ module balanced::balanced_dollar_crosschain {
             version: version,
             id_cap: id_cap,
             xcall_manager_id: xcall_manager_id,
-            xcall_id: xcall_manager_id  //todo::change it
+            xcall_id: xcall_id
         });
     }
 
@@ -161,7 +162,7 @@ module balanced::balanced_dollar_crosschain {
 
         assert!(from == network_address::from_string(config.icon_bnusd), OnlyICONBnUSD);
         let message: XCrossTransfer = cross_transfer::decode(&msg);
-        let string_to = network_address::addr(&network_address::from_string(cross_transfer::to(&message)));
+        let string_to = cross_transfer::to(&message); //network_address::addr(&network_address::from_string(cross_transfer::to(&message)));
         let to = address_from_hex_string(&string_to);
         let amount: u64 = translate_incoming_amount(cross_transfer::value(&message));
 
