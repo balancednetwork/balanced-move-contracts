@@ -40,19 +40,23 @@ module balanced::asset_manager_test {
         scenario.next_tx(admin);
         xcall_manager::init_test(scenario.ctx());
         scenario.next_tx(admin);
+
         let adminCap = scenario.take_from_sender<AdminCap>();
         let managerAdminCap = scenario.take_from_sender<xcall_manager::AdminCap>();
         let carrier = scenario.take_from_sender<WitnessCarrier>();
         let xcall_state= scenario.take_shared<XCallState>();
-        configure(&adminCap, &xcall_state, carrier, string::utf8(ICON_ASSET_MANAGER), 1, scenario.ctx());
-      
 
-        scenario.next_tx(admin);
         let sources = vector[string::utf8(b"centralized")];
         let destinations = vector[string::utf8(b"icon/hx234"), string::utf8(b"icon/hx334")];
         let xm_carrier = scenario.take_from_sender<XcallManagerWitnessCarrier>();
         xcall_manager::configure(&managerAdminCap, &xcall_state, xm_carrier, string::utf8(ICON_ASSET_MANAGER),  sources, destinations, 1, scenario.ctx());
+
+        scenario.next_tx(admin);
+        let xcallManagerConfig: xcall_manager::Config  = scenario.take_shared<xcall_manager::Config>();
+        configure(&adminCap, &xcallManagerConfig, &xcall_state, carrier, string::utf8(ICON_ASSET_MANAGER), 1, scenario.ctx());
+      
         test_scenario::return_shared<XCallState>(xcall_state);
+        test_scenario::return_shared<xcall_manager::Config>(xcallManagerConfig);
         test_scenario::return_to_sender(&scenario, adminCap);
         scenario.return_to_sender(managerAdminCap);
         scenario.next_tx(admin);
@@ -146,49 +150,6 @@ module balanced::asset_manager_test {
         scenario.end();
      }
 
-    //   #[test]
-    // fun rollback_execute_call_old() {
-    //     // Arrange
-    //     let mut scenario = register_token_test();
-    //     let mut config = scenario.take_shared<Config>();
-    //      let c = clock::create_for_testing(scenario.ctx());
-    //     scenario.next_tx(ADMIN);
-
-    //     let bnusd_amount = math::pow(10, 9);
-    //     let token_type = string::from_ascii(*type_name::borrow_string(&type_name::get<BALANCED_DOLLAR>()));
-    //     let message = wrap_deposit_revert(token_type, ADDRESS_TO_ADDRESS, bnusd_amount);
-    //     let data = deposit_revert::encode(&message, b"DepositRevert");
-        
-    //     scenario = setup_connection( scenario, string::utf8(b"icon"), ADMIN);
-    //     let mut xcall_state = scenario.take_shared<XCallState>();
-    //     let conn_cap = xcall_state::create_conn_cap_for_testing(&mut xcall_state);
-
-    //     let sources = vector[string::utf8(b"centralized")];
-    //     let xcallManagerConfig: xcall_manager::Config  = scenario.take_shared<xcall_manager::Config>();
-    //     let sui_dapp = id_to_hex_string(&xcall_state::get_id_cap_id(asset_manager::get_idcap(&config)));
-    //     let icon_dapp = network_address::create(string::utf8(b"icon"), string::utf8(b"hx734"));
-    //     let from_nid = string::utf8(b"icon");
-    //     let request = message_request::create(icon_dapp, sui_dapp, 2, 1, data, sources);
-    //     let message = cs_message::encode(&cs_message::new(cs_message::request_code(), message_request::encode(&request)));
-    //     xcall::handle_message(&mut xcall_state, &conn_cap, from_nid, message, scenario.ctx());
-
-    //     scenario.next_tx(ADMIN);
-        
-    //     let fee_amount = math::pow(10, 9 + 4);
-    //     let fee = coin::mint_for_testing<SUI>(fee_amount, scenario.ctx());
-    //     let deposit_fee = coin::mint_for_testing<SUI>(fee_amount, scenario.ctx());
-    //     let deposited = coin::mint_for_testing<BALANCED_DOLLAR>(bnusd_amount, scenario.ctx());
-    //     deposit( &mut xcall_state, &mut config, &xcallManagerConfig, deposit_fee, deposited, bnusd_amount, option::none(), option::none(), scenario.ctx());
-    //     asset_manager::execute_call<BALANCED_DOLLAR>(&mut config, &xcallManagerConfig, &mut xcall_state, fee, &c, 1, data, scenario.ctx());
-
-    //     test_scenario::return_shared(config);
-    //     test_scenario::return_shared(xcallManagerConfig);
-    //     test_scenario::return_shared(xcall_state);
-    //     clock::destroy_for_testing(c);
-        
-    //     scenario.end();
-    // }
-
      #[test]
     fun test_deposit_for_return_remaining_amount() {
         // Arrange
@@ -277,26 +238,17 @@ module balanced::asset_manager_test {
         let mut xcall_state = scenario.take_shared<XCallState>();
         let conn_cap = xcall_state::create_conn_cap_for_testing(&mut xcall_state);
 
-        //let sources = vector[string::utf8(b"centralized")];
         let xcallManagerConfig: xcall_manager::Config  = scenario.take_shared<xcall_manager::Config>();
-        //let sui_dapp = id_to_hex_string(&xcall_state::get_id_cap_id(asset_manager::get_idcap(&config)));
-        //let icon_dapp = network_address::create(string::utf8(b"icon"), string::utf8(b"hx734"));
         let from_nid = string::utf8(b"icon");
-        // let id_cap = asset_manager::get_idcap(&config);
-        // let request = message_request::create(icon_dapp, sui_dapp, 2, 1, data, sources);
-        //let message = cs_message::encode(&cs_message::new(cs_message::result_code(), b""));
-        
+       
         let response = message_result::create(1, message_result::failure(),b"");
         let message = cs_message::encode(&cs_message::new(cs_message::result_code(), message_result::encode(&response)));
-
         scenario.next_tx(ADMIN);
         
         let fee_amount = math::pow(10, 9 + 4);
         let deposit_fee = coin::mint_for_testing<SUI>(fee_amount, scenario.ctx());
         let deposited = coin::mint_for_testing<BALANCED_DOLLAR>(bnusd_amount, scenario.ctx());
         deposit( &mut xcall_state, &mut config, &xcallManagerConfig, deposit_fee, deposited, bnusd_amount, option::none(), option::none(), scenario.ctx());
-        //let ticket = xcall::execute_rollback(&mut xcall_state, id_cap, 2, scenario.ctx());
-        //xcall::execute_rollback_result(&mut xcall_state, ticket, true);
         xcall::handle_message(&mut xcall_state, &conn_cap, from_nid, message, scenario.ctx());
         asset_manager::execute_rollback<BALANCED_DOLLAR>(&mut config, &mut xcall_state, 1, &c, scenario.ctx());
 

@@ -41,7 +41,9 @@ module balanced::balanced_dollar_crosschain {
         id: UID, 
         icon_bnusd: String,
         version: u64,
-        id_cap: IDCap
+        id_cap: IDCap,
+        xcall_manager_id: ID, 
+        xcall_id: ID
     }
 
     fun init(ctx: &mut TxContext) {
@@ -63,21 +65,32 @@ module balanced::balanced_dollar_crosschain {
         witness
     }
 
-    entry fun configure(_: &AdminCap, xcall_state: &XCallState, witness_carrier: WitnessCarrier, icon_bnusd: String, version: u64, ctx: &mut TxContext ){
+    entry fun configure(_: &AdminCap, xcall_manager_config: &XcallManagerConfig, xcall_state: &XCallState, witness_carrier: WitnessCarrier, icon_bnusd: String, version: u64, ctx: &mut TxContext ){
         let w = get_witness(witness_carrier);
         let id_cap =   xcall::register_dapp(xcall_state, w, ctx);
+        let xcall_manager_id = xcall_manager::get_id(xcall_manager_config);
 
         transfer::share_object(Config {
             id: object::new(ctx),
             icon_bnusd: icon_bnusd,
             version: version,
-            id_cap: id_cap
+            id_cap: id_cap,
+            xcall_manager_id: xcall_manager_id,
+            xcall_id: xcall_manager_id  //todo::change it
         });
     }
 
     public fun get_idcap(config: &Config): &IDCap {
         enforce_version(config);
         &config.id_cap
+    }
+
+    public fun get_xcall_manager_id(config: &Config): ID{
+        config.xcall_manager_id
+    }
+
+    public fun get_xcall_id(config: &Config): ID{
+        config.xcall_id
     }
 
     entry fun cross_transfer(
@@ -120,6 +133,10 @@ module balanced::balanced_dollar_crosschain {
         
         let envelope = envelope::wrap_call_message_rollback(xcallMessage, rollback, sources, destinations);
         xcall::send_call(xcall_state, fee, get_idcap(config), config.icon_bnusd, envelope::encode(&envelope), ctx);
+    }
+
+    entry fun get_execute_call_params(config: &Config): (ID, ID){
+        (get_xcall_manager_id(config), get_xcall_id(config))
     }
 
     entry fun execute_call(bnusd_cap: &BnUSDAdminCap, carier: &mut TreasuryCapCarrier<BALANCED_DOLLAR>, config: &Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){

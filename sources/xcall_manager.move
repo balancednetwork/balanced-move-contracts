@@ -66,6 +66,10 @@ module balanced::xcall_manager{
 
     }
 
+    public fun get_id(config: &Config): ID{
+        config.id.to_inner()
+    }
+
     fun get_witness(carrier: WitnessCarrier): REGISTER_WITNESS {
         let WitnessCarrier { id, witness } = carrier;
         id.delete();
