@@ -16,7 +16,7 @@ module balanced::balanced_dollar_crosschain {
     use balanced::cross_transfer_revert::{Self, wrap_cross_transfer_revert, XCrossTransferRevert};
     use balanced::balanced_utils::{address_to_hex_string, address_from_hex_string};
     //use balanced::balanced_dollar::{Self, TreasuryCapCarrier, BALANCED_DOLLAR, AdminCap as BnUSDAdminCap};
-    use balanced_dollar::balanced_dollar::{Self, BALANCED_DOLLAR}
+    use balanced_dollar::balanced_dollar::{Self, BALANCED_DOLLAR};
 
     const AmountLessThanMinimumAmount: u64  = 1;
     const ProtocolMismatch: u64 = 2;
@@ -170,6 +170,13 @@ module balanced::balanced_dollar_crosschain {
 
         balanced_dollar::mint(config.balanced_treasury_cap, to,  amount, ctx);
         xcall::execute_call_result(xcall,ticket,true,fee,ctx);
+    }
+
+    //Called by admin when execute call fails without a rollback
+    entry fun execute_force_rollback<T>(_: &AdminCap, config: &mut Config, xcall:&mut XCallState, fee:Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+        enforce_version(config);
+        let ticket = xcall::execute_call(xcall, get_idcap(config), request_id, data, ctx);
+        xcall::execute_call_result(xcall,ticket,false,fee,ctx);
     }
 
     entry fun execute_rollback(config: &Config, xcall:&mut XCallState, sn: u128, ctx:&mut TxContext){
