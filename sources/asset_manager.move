@@ -179,7 +179,7 @@ module balanced::asset_manager{
         
         let maxLimit = (tokenBalance  * percentage ) / POINTS;
         let maxWithdraw = tokenBalance - maxLimit;
-        let mut timeDiff = clock::timestamp_ms(c) - rate_limit.last_update;
+        let mut timeDiff = (clock::timestamp_ms(c) - rate_limit.last_update)/1000;
         timeDiff = if(timeDiff > period){ period } else { timeDiff };
 
         let addedAllowedWithdrawal = (maxWithdraw * timeDiff) / period;
@@ -227,7 +227,7 @@ module balanced::asset_manager{
         coin::put<T>(&mut self.balance, deposit_token);
         transfer::public_transfer(token, sender);
 
-        let token_address = string::from_ascii(type_name::get_address(&type_name::get<T>()));
+        let token_address = string::from_ascii(*type_name::borrow_string(&type_name::get<T>()));
         let depositMessage = deposit::wrap_deposit(
             token_address,
             from_address,
@@ -283,7 +283,7 @@ module balanced::asset_manager{
         if(token_type == message_token_type){
             assert!(from == network_address::from_string(config.icon_asset_manager), EIconAssetManagerRequired);
             let message: WithdrawTo = withdraw_to::decode(&msg);
-            let to_address = withdraw_to::to(&message); //network_address::addr(&network_address::from_string(withdraw_to::to(&message)));
+            let to_address = withdraw_to::to(&message);
             let asset_manager = get_asset_manager_mut<T>(config);
             let balance = &mut asset_manager.balance;
             let rate_limit = &mut asset_manager.rate_limit;
@@ -335,14 +335,13 @@ module balanced::asset_manager{
         };
     }
 
-    //remove public identifier of below methods once test completes
-    public fun get_asset_manager_mut<T>(config: &mut Config): &mut AssetManager<T> {
+    fun get_asset_manager_mut<T>(config: &mut Config): &mut AssetManager<T> {
         let token_type = string::from_ascii(*type_name::borrow_string(&type_name::get<T>()));
         let asset_manager = config.assets.borrow_mut<String, AssetManager<T>>(token_type);
         asset_manager
     }
 
-    public fun get_asset_manager<T>(config: &Config): &AssetManager<T> {
+    fun get_asset_manager<T>(config: &Config): &AssetManager<T> {
         let token_type = string::from_ascii(*type_name::borrow_string(&type_name::get<T>()));
         let asset_manager = config.assets.borrow<String, AssetManager<T>>(token_type);
         asset_manager
