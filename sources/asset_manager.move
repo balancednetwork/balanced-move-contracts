@@ -302,6 +302,13 @@ module balanced::asset_manager{
         
     }
 
+    //Called by admin when execute call fails without a rollback
+    entry fun execute_force_rollback(_: &AdminCap, config: &mut Config, xcall:&mut XCallState, fee:Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+        enforce_version(config);
+        let ticket = xcall::execute_call(xcall, get_idcap(config), request_id, data, ctx);
+        xcall::execute_call_result(xcall,ticket,false,fee,ctx);
+    }
+
     entry fun execute_rollback<T>(config: &mut Config, xcall:&mut XCallState, sn: u128, c: &Clock,  ctx:&mut TxContext){
         enforce_version(config);
         let ticket = xcall::execute_rollback(xcall, get_idcap(config), sn, ctx);
