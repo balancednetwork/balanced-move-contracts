@@ -3,8 +3,6 @@ module balanced::balanced_utils {
     use std::string::{Self, String};
     use sui::bcs::{Self};
     use sui::hex::{Self};
-    use std::debug;
-
 
     public fun address_to_hex_string(address:&address): String {
         let bytes = bcs::to_bytes(address);

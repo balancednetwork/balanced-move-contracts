@@ -36,7 +36,7 @@ module balanced::asset_manager{
     const ENotUpgrade: u64 = 6;
     const EAlreadyRegistered: u64 = 7;
     const EWrongVersion: u64 = 8;
-
+    const EInvalidPercentage: u64 = 9;
     const CURRENT_VERSION: u64 = 1;
 
     public struct REGISTER_WITNESS has drop, store {}
@@ -143,7 +143,7 @@ module balanced::asset_manager{
 
         let asset_manager_balance = &asset_manager.balance;
         let rate_limit = &mut asset_manager.rate_limit;
-        //validate percentage
+        assert!(POINTS >= percentage, EInvalidPercentage );
         rate_limit.current_limit = (balance::value(asset_manager_balance) * percentage) / POINTS;
         
         config.assets.add(token_type, asset_manager)
@@ -183,9 +183,7 @@ module balanced::asset_manager{
         timeDiff = if(timeDiff > period){ period } else { timeDiff };
 
         let addedAllowedWithdrawal = (maxWithdraw * timeDiff) / period;
-        let current_limit = rate_limit.current_limit;
         
-        assert!(addedAllowedWithdrawal <= current_limit, EExceedsWithdrawLimit ); //change message
         let mut limit = rate_limit.current_limit - addedAllowedWithdrawal;
         limit = if(tokenBalance > limit){ limit } else { tokenBalance };
         limit = if(limit > maxLimit){ limit } else { maxLimit };
