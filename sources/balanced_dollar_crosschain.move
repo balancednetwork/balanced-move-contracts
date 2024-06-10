@@ -16,7 +16,7 @@ module balanced::balanced_dollar_crosschain {
     use balanced::cross_transfer_revert::{Self, wrap_cross_transfer_revert, XCrossTransferRevert};
     use balanced::balanced_utils::{address_to_hex_string, address_from_hex_string};
     //use balanced::balanced_dollar::{Self, TreasuryCapCarrier, BALANCED_DOLLAR, AdminCap as BnUSDAdminCap};
-    use balanced_dollar::balanced_dollar::{Self, BALANCED_DOLLAR}
+    use balanced_dollar::balanced_dollar::{Self, BALANCED_DOLLAR};
 
     const AmountLessThanMinimumAmount: u64  = 1;
     const ProtocolMismatch: u64 = 2;
@@ -67,7 +67,7 @@ module balanced::balanced_dollar_crosschain {
         witness
     }
 
-    entry fun configure(_: &AdminCap, treasury_cap: TrasuryCap<BALANCED_DOLLAR>, xcall_manager_config: &XcallManagerConfig, storage: &XCallState, witness_carrier: WitnessCarrier, icon_bnusd: String, version: u64, ctx: &mut TxContext ){
+    entry fun configure(_: &AdminCap, treasury_cap: TreasuryCap<BALANCED_DOLLAR>, xcall_manager_config: &XcallManagerConfig, storage: &XCallState, witness_carrier: WitnessCarrier, icon_bnusd: String, version: u64, ctx: &mut TxContext ){
         let w = get_witness(witness_carrier);
         let id_cap =   xcall::register_dapp(storage, w, ctx);
         let xcall_manager_id = xcall_manager::get_id(xcall_manager_config);
@@ -99,7 +99,7 @@ module balanced::balanced_dollar_crosschain {
 
     entry fun cross_transfer(
         xcall_state: &mut XCallState,
-        config: &Config,
+        config: &mut Config,
         xcall_manager_config: &XcallManagerConfig,
         fee: Coin<SUI>,
         token: Coin<BALANCED_DOLLAR>,
@@ -112,7 +112,7 @@ module balanced::balanced_dollar_crosschain {
         let messageData = option::get_with_default(&data, b"");
         assert!(amount > 0, AmountLessThanMinimumAmount);
         assert!(coin::value(&token) == amount, ENotTransferredAmount);
-        balanced_dollar::burn(config.balanced_treasury_cap, token);
+        balanced_dollar::burn(get_treasury_cap_mut(config), token);
         let from = ctx.sender();
 
         let fromAddress = address_to_hex_string(&from);
@@ -142,7 +142,7 @@ module balanced::balanced_dollar_crosschain {
         (get_xcall_manager_id(config), get_xcall_id(config))
     }
 
-    entry fun execute_call(config: &Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+    entry fun execute_call(config: &mut Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
         enforce_version(config);
         let ticket = xcall::execute_call(xcall, get_idcap(config), request_id, data, ctx);
         let msg = execute_ticket::message(&ticket);
@@ -168,11 +168,11 @@ module balanced::balanced_dollar_crosschain {
         let to = address_from_hex_string(&string_to);
         let amount: u64 = translate_incoming_amount(cross_transfer::value(&message));
 
-        balanced_dollar::mint(config.balanced_treasury_cap, to,  amount, ctx);
+        balanced_dollar::mint(get_treasury_cap_mut(config), to,  amount, ctx);
         xcall::execute_call_result(xcall,ticket,true,fee,ctx);
     }
 
-    entry fun execute_rollback(config: &Config, xcall:&mut XCallState, sn: u128, ctx:&mut TxContext){
+    entry fun execute_rollback(config: &mut Config, xcall:&mut XCallState, sn: u128, ctx:&mut TxContext){
         enforce_version(config);
         let ticket = xcall::execute_rollback(xcall, get_idcap(config), sn, ctx);
         let msg = rollback_ticket::rollback(&ticket);
@@ -185,13 +185,17 @@ module balanced::balanced_dollar_crosschain {
         let message: XCrossTransferRevert = cross_transfer_revert::decode(&msg);
         let to = cross_transfer_revert::to(&message);
         let amount: u64 = cross_transfer_revert::value(&message);
-        balanced_dollar::mint(config.balanced_treasury_cap, to, amount,  ctx);
+        balanced_dollar::mint(get_treasury_cap_mut(config), to, amount,  ctx);
         xcall::execute_rollback_result(xcall,ticket,true)
     }
 
     entry fun set_icon_bnusd(_: &AdminCap, config: &mut Config, icon_bnusd: String ){
         enforce_version(config);
         config.icon_bnusd = icon_bnusd
+    }
+    
+    fun get_treasury_cap_mut(config: &mut Config): &mut TreasuryCap<BALANCED_DOLLAR>{
+        &mut config.balanced_treasury_cap
     }
 
     fun set_version(config: &mut Config, version: u64 ){
@@ -218,6 +222,11 @@ module balanced::balanced_dollar_crosschain {
 
     fun translate_incoming_amount(amount: u128): u64 {
         (amount / ( math::pow(10, 9) as u128 ) ) as u64
+    }
+
+     #[test_only]
+    public fun get_treasury_cap_for_testing(config: &mut Config): &mut TreasuryCap<BALANCED_DOLLAR> {
+        &mut config.balanced_treasury_cap
     }
 
     #[test_only]
