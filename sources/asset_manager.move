@@ -335,13 +335,14 @@ module balanced::asset_manager{
         };
     }
 
-    fun get_asset_manager_mut<T>(config: &mut Config): &mut AssetManager<T> {
+    //remove public identifier of below methods once test completes
+    public fun get_asset_manager_mut<T>(config: &mut Config): &mut AssetManager<T> {
         let token_type = string::from_ascii(*type_name::borrow_string(&type_name::get<T>()));
         let asset_manager = config.assets.borrow_mut<String, AssetManager<T>>(token_type);
         asset_manager
     }
 
-    fun get_asset_manager<T>(config: &Config): &AssetManager<T> {
+    public fun get_asset_manager<T>(config: &Config): &AssetManager<T> {
         let token_type = string::from_ascii(*type_name::borrow_string(&type_name::get<T>()));
         let asset_manager = config.assets.borrow<String, AssetManager<T>>(token_type);
         asset_manager
