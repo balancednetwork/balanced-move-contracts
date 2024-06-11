@@ -102,7 +102,7 @@ module balanced::balanced_dollar_crosschain {
         config: &mut Config,
         xcall_manager_config: &XcallManagerConfig,
         fee: Coin<SUI>,
-        token: Coin<BALANCED_DOLLAR>,
+        mut token: Coin<BALANCED_DOLLAR>,
         to: String,
         amount: u64,
         data: Option<vector<u8>>,
@@ -111,8 +111,11 @@ module balanced::balanced_dollar_crosschain {
         enforce_version(config);
         let messageData = option::get_with_default(&data, b"");
         assert!(amount > 0, AmountLessThanMinimumAmount);
-        assert!(coin::value(&token) == amount, ENotTransferredAmount);
-        balanced_dollar::burn(get_treasury_cap_mut(config), token);
+        assert!(coin::value(&token) >= amount, ENotTransferredAmount);
+        let transfer_token = token.split(amount, ctx);
+        transfer::public_transfer(token, ctx.sender());
+
+        balanced_dollar::burn(get_treasury_cap_mut(config), transfer_token);
         let from = ctx.sender();
 
         let fromAddress = address_to_hex_string(&from);
@@ -165,10 +168,10 @@ module balanced::balanced_dollar_crosschain {
         assert!(from == network_address::from_string(config.icon_bnusd), OnlyICONBnUSD);
         let message: XCrossTransfer = cross_transfer::decode(&msg);
         let string_to = cross_transfer::to(&message); //network_address::addr(&network_address::from_string(cross_transfer::to(&message)));
-        let to = address_from_hex_string(&string_to);
+        let to = network_address::addr(&network_address::from_string(string_to));
         let amount: u64 = translate_incoming_amount(cross_transfer::value(&message));
 
-        balanced_dollar::mint(get_treasury_cap_mut(config), to,  amount, ctx);
+        balanced_dollar::mint(get_treasury_cap_mut(config), address_from_hex_string(&to),  amount, ctx);
         xcall::execute_call_result(xcall,ticket,true,fee,ctx);
     }
 
