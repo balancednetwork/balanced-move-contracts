@@ -94,7 +94,7 @@ module balanced::xcall_manager_test {
         let sources = vector[string::utf8(b"centralized-1")];
         let mut config = scenario.take_shared<Config>();
         let sui_dapp = id_to_hex_string(&xcall_state::get_id_cap_id(xcall_manager::get_idcap(&config)));
-        let icon_dapp = network_address::create(string::utf8(b"icon"), string::utf8(b"hx734"));
+        let icon_dapp = network_address::create(string::utf8(b"icon"), string::utf8(b"hx337"));
         let from_nid = string::utf8(b"icon");
         let request = message_request::create(icon_dapp, sui_dapp, 1, 1, data, sources);
         let message = cs_message::encode(&cs_message::new(cs_message::request_code(), message_request::encode(&request)));
