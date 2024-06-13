@@ -1,0 +1,7 @@
+Move.lock
+build
+.DS_Store
+scripts/node_modules
+scripts/yarn.lock
+scripts/package-lock.json
+scripts
