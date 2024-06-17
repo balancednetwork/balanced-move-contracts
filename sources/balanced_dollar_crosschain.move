@@ -167,7 +167,7 @@ module balanced::balanced_dollar_crosschain {
 
         assert!(from == network_address::from_string(config.icon_bnusd), OnlyICONBnUSD);
         let message: XCrossTransfer = cross_transfer::decode(&msg);
-        let string_to = cross_transfer::to(&message); //network_address::addr(&network_address::from_string(cross_transfer::to(&message)));
+        let string_to = cross_transfer::to(&message);
         let to = network_address::addr(&network_address::from_string(string_to));
         let amount: u64 = translate_incoming_amount(cross_transfer::value(&message));
 
