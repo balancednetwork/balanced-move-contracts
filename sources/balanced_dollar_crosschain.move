@@ -15,14 +15,11 @@ module balanced::balanced_dollar_crosschain {
     use balanced::cross_transfer::{Self, wrap_cross_transfer, XCrossTransfer};
     use balanced::cross_transfer_revert::{Self, wrap_cross_transfer_revert, XCrossTransferRevert};
     use balanced::balanced_utils::{address_to_hex_string, address_from_hex_string};
-    //use balanced::balanced_dollar::{Self, TreasuryCapCarrier, BALANCED_DOLLAR, AdminCap as BnUSDAdminCap};
     use balanced_dollar::balanced_dollar::{Self, BALANCED_DOLLAR};
 
-    const AmountLessThanMinimumAmount: u64  = 1;
     const ProtocolMismatch: u64 = 2;
     const OnlyICONBnUSD: u64 = 3;
     const UnknownMessageType: u64 = 4;
-    const ENotTransferredAmount: u64 = 5;
     const ENotUpgrade: u64 = 6;
     const EWrongVersion: u64 = 7;
 
@@ -102,20 +99,15 @@ module balanced::balanced_dollar_crosschain {
         config: &mut Config,
         xcall_manager_config: &XcallManagerConfig,
         fee: Coin<SUI>,
-        mut token: Coin<BALANCED_DOLLAR>,
+        token: Coin<BALANCED_DOLLAR>,
         to: String,
-        amount: u64,
         data: Option<vector<u8>>,
         ctx: &mut TxContext
     ) {
         enforce_version(config);
         let messageData = option::get_with_default(&data, b"");
-        assert!(amount > 0, AmountLessThanMinimumAmount);
-        assert!(coin::value(&token) >= amount, ENotTransferredAmount);
-        let transfer_token = token.split(amount, ctx);
-        transfer::public_transfer(token, ctx.sender());
-
-        balanced_dollar::burn(get_treasury_cap_mut(config), transfer_token);
+        let amount = coin::value(&token);
+        balanced_dollar::burn(get_treasury_cap_mut(config), token);
         let from = ctx.sender();
 
         let fromAddress = address_to_hex_string(&from);
