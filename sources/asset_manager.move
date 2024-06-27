@@ -235,6 +235,7 @@ module balanced::asset_manager{
         let messageData = option::get_with_default(&data, b"");
         let self = get_asset_manager_mut<T>(config);
         let amount = coin::value(&token);
+        assert!(amount>0, EAmountLessThanMinimumAmount);
         coin::put<T>(&mut self.balance, token);
 
         let token_address = string::from_ascii(*type_name::borrow_string(&type_name::get<T>()));

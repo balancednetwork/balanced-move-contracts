@@ -17,6 +17,7 @@ module balanced::balanced_dollar_crosschain {
     use balanced::balanced_utils::{address_to_hex_string, address_from_hex_string};
     use balanced_dollar::balanced_dollar::{Self, BALANCED_DOLLAR};
 
+    const EAmountLessThanMinimumAmount: u64 = 1;
     const ProtocolMismatch: u64 = 2;
     const OnlyICONBnUSD: u64 = 3;
     const UnknownMessageType: u64 = 4;
@@ -107,6 +108,7 @@ module balanced::balanced_dollar_crosschain {
         enforce_version(config);
         let messageData = option::get_with_default(&data, b"");
         let amount = coin::value(&token);
+        assert!(amount>0, EAmountLessThanMinimumAmount);
         balanced_dollar::burn(get_treasury_cap_mut(config), token);
         let from = ctx.sender();
 
