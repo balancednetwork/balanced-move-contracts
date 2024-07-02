@@ -19,6 +19,7 @@ module balanced::asset_manager{
     use balanced::deposit_revert::{Self, DepositRevert};
     use balanced::withdraw_to::{Self, WithdrawTo};
     use balanced::balanced_utils::{address_to_hex_string, address_from_hex_string};
+    use sui::package::UpgradeCap;
 
     const DEPOSIT_NAME: vector<u8> = b"Deposit";
     const WITHDRAW_TO_NAME: vector<u8> = b"WithdrawTo";
@@ -28,10 +29,9 @@ module balanced::asset_manager{
     const POINTS: u64 = 10000;
 
     const EAmountLessThanMinimumAmount: u64 = 0;
-    const ProtocolMismatch: u64 = 2;
+    const ETypeArgumentMismatch: u64 = 2;
     const UnknownMessageType: u64 = 3;
     const EExceedsWithdrawLimit: u64 = 4;
-    const EIconAssetManagerRequired: u64 = 5;
     const ENotUpgrade: u64 = 6;
     const EAlreadyRegistered: u64 = 7;
     const EWrongVersion: u64 = 8;
@@ -119,7 +119,7 @@ module balanced::asset_manager{
         config.xcall_id
     }
 
-    entry fun register_token<T>(_: &AdminCap, config:&mut Config, c: &Clock,
+    entry fun register_token<T>(config:&mut Config, _: &AdminCap, c: &Clock,
         period: u64, percentage: u64,  ctx: &mut TxContext) {
         enforce_version(config);
         let token_type = string::from_ascii(*type_name::borrow_string(&type_name::get<T>()));
@@ -149,8 +149,8 @@ module balanced::asset_manager{
     }
 
     entry fun configure_rate_limit<T> (
-        _: &AdminCap,
         config: &mut Config,
+        _: &AdminCap,
         c: &Clock,
         period: u64,
         percentage: u64
@@ -165,8 +165,8 @@ module balanced::asset_manager{
     }
 
     entry fun reset_limit<T> (
+        config: &mut Config,
         _: &AdminCap,
-        config: &mut Config
     ) 
     {
         enforce_version(config);
@@ -219,8 +219,8 @@ module balanced::asset_manager{
     }
 
     entry fun deposit<T>(
-        xcallState: &mut XCallState, 
         config: &mut Config, 
+        xcallState: &mut XCallState, 
         xcall_manager_config: &XcallManagerConfig, 
         fee: Coin<SUI>,
         token: Coin<T>, 
@@ -280,22 +280,17 @@ module balanced::asset_manager{
         let protocols = execute_ticket::protocols(&ticket);
 
         let verified = xcall_manager::verify_protocols(xcall_manager_config, &protocols);
+        let method: vector<u8> = deposit::get_method(&msg);
+
+        let token_type = string::from_ascii(*type_name::borrow_string(&type_name::get<T>()));
+        let message_token_type = deposit::get_token_type(&msg);
+
         assert!(
-            verified,
-            ProtocolMismatch
+            token_type == message_token_type,
+            ETypeArgumentMismatch
         );
 
-        let method: vector<u8> = deposit::get_method(&msg);
-        assert!(
-            method == WITHDRAW_TO_NAME || method == WITHDRAW_NATIVE_TO_NAME,
-            UnknownMessageType
-        );
-        
-        let token_type = string::from_ascii(*type_name::borrow_string(&type_name::get<T>()));
-        
-        let message_token_type = deposit::get_token_type(&msg);
-        if(token_type == message_token_type){
-            assert!(from == network_address::from_string(config.icon_asset_manager), EIconAssetManagerRequired);
+        if(verified && (method == WITHDRAW_TO_NAME || method == WITHDRAW_NATIVE_TO_NAME) && from == network_address::from_string(config.icon_asset_manager)){
             let message: WithdrawTo = withdraw_to::decode(&msg);
             let to_address = withdraw_to::to(&message);
             let asset_manager = get_asset_manager_mut<T>(config);
@@ -309,13 +304,16 @@ module balanced::asset_manager{
                 withdraw_to::amount(&message),
                 ctx
             );
-        };
+            xcall::execute_call_result(xcall,ticket,true,fee,ctx);
+        }
+        else{
+            xcall::execute_call_result(xcall,ticket,false,fee,ctx);
+        }
 
-        xcall::execute_call_result(xcall,ticket,true,fee,ctx);
     }
 
     //Called by admin when execute call fails without a rollback
-    entry fun execute_force_rollback(_: &AdminCap, config: &Config, xcall:&mut XCallState, fee:Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+    entry fun execute_force_rollback(config: &Config, _: &AdminCap, xcall:&mut XCallState, fee:Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
         enforce_version(config);
         let ticket = xcall::execute_call(xcall, get_idcap(config), request_id, data, ctx);
         xcall::execute_call_result(xcall,ticket,false,fee,ctx);
@@ -372,7 +370,7 @@ module balanced::asset_manager{
         transfer::public_transfer(token, to);
     }
 
-    entry fun set_icon_asset_manager(_: &AdminCap, config: &mut Config, icon_asset_manager: String ){
+    entry fun set_icon_asset_manager(config: &mut Config, _: &AdminCap, icon_asset_manager: String ){
         enforce_version(config);
         config.icon_asset_manager = icon_asset_manager
     }
@@ -389,7 +387,7 @@ module balanced::asset_manager{
         assert!(self.version==CURRENT_VERSION, EWrongVersion);
     }
 
-    entry fun migrate(_: &AdminCap, self: &mut Config) {
+    entry fun migrate(self: &mut Config, _: &UpgradeCap) {
         assert!(get_version(self) < CURRENT_VERSION, ENotUpgrade);
         set_version(self, CURRENT_VERSION);
     }

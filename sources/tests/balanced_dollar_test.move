@@ -106,7 +106,7 @@ module balanced::balanced_dollar_test {
 
         let mut xcall_state= scenario.take_shared<XCallState>();
     
-        cross_transfer(&mut xcall_state, &mut config, &xcallManagerConfig, fee, deposited, TO.to_string(), option::none(), scenario.ctx());
+        cross_transfer(&mut config, &mut xcall_state,  &xcallManagerConfig, fee, deposited, TO.to_string(), option::none(), scenario.ctx());
         test_scenario::return_shared(xcallManagerConfig);
         test_scenario::return_shared( config);
         test_scenario::return_shared(xcall_state);
@@ -175,7 +175,7 @@ module balanced::balanced_dollar_test {
         let fee = coin::mint_for_testing<SUI>(fee_amount, scenario.ctx());
         let mut treasuryCap = get_treasury_cap_for_testing(&mut config);
         let deposited = coin::mint(treasuryCap, bnusd_amount, scenario.ctx());
-        cross_transfer(&mut xcall_state, &mut config, &xcallManagerConfig, fee, deposited, TO.to_string(), option::none(), scenario.ctx());
+        cross_transfer(&mut config, &mut xcall_state,  &xcallManagerConfig, fee, deposited, TO.to_string(), option::none(), scenario.ctx());
         xcall::handle_message(&mut xcall_state, &conn_cap, from_nid, message, scenario.ctx());
 
        

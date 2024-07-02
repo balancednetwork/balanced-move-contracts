@@ -126,7 +126,7 @@ module balanced::xcall_manager_test {
         let sources = vector[string::utf8(b"centralized-1")];
         let mut config = scenario.take_shared<Config>();
         let adminCap = scenario.take_from_sender<AdminCap>();
-        xcall_manager::whitelist_action(&adminCap, &mut config, data);
+        xcall_manager::whitelist_action(&mut config, &adminCap , data);
         let sui_dapp = id_to_hex_string(&xcall_state::get_id_cap_id(xcall_manager::get_idcap(&config)));
         let icon_dapp = network_address::create(string::utf8(b"icon"), string::utf8(b"hx337"));
         let from_nid = string::utf8(b"icon");
@@ -140,7 +140,7 @@ module balanced::xcall_manager_test {
 
         xcall_manager::execute_call(&mut config, &mut xcall_state, fee, 1, data, scenario.ctx());
 
-        //xcall_manager::remove_action(&adminCap, &mut config, data);
+        //xcall_manager::remove_action(&mut config, &adminCap , data);
 
         test_scenario::return_shared(config);
         test_scenario::return_shared(xcall_state);

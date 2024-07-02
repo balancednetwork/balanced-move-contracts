@@ -3,6 +3,7 @@ module balanced::balanced_dollar_crosschain {
     use sui::coin::{Self, Coin, TreasuryCap};
     use sui::sui::SUI;
     use sui::math;
+    use sui::package::UpgradeCap;
 
     use xcall::{main as xcall};
     use xcall::xcall_state::{Self, Storage as XCallState, IDCap};
@@ -18,8 +19,6 @@ module balanced::balanced_dollar_crosschain {
     use balanced_dollar::balanced_dollar::{Self, BALANCED_DOLLAR};
 
     const EAmountLessThanMinimumAmount: u64 = 1;
-    const ProtocolMismatch: u64 = 2;
-    const OnlyICONBnUSD: u64 = 3;
     const UnknownMessageType: u64 = 4;
     const ENotUpgrade: u64 = 6;
     const EWrongVersion: u64 = 7;
@@ -96,8 +95,8 @@ module balanced::balanced_dollar_crosschain {
     }
 
     entry fun cross_transfer(
-        xcall_state: &mut XCallState,
         config: &mut Config,
+        xcall_state: &mut XCallState,
         xcall_manager_config: &XcallManagerConfig,
         fee: Coin<SUI>,
         token: Coin<BALANCED_DOLLAR>,
@@ -147,30 +146,23 @@ module balanced::balanced_dollar_crosschain {
         let protocols = execute_ticket::protocols(&ticket);
 
         let verified = xcall_manager::verify_protocols(xcall_manager_config, &protocols);
-        assert!(
-            verified,
-            ProtocolMismatch
-        );
-
         let method: vector<u8> = cross_transfer::get_method(&msg);
 
-        assert!(
-            method == CROSS_TRANSFER, 
-            UnknownMessageType
-        );
+        if (verified && method == CROSS_TRANSFER && from == network_address::from_string(config.icon_bnusd)){
+            let message: XCrossTransfer = cross_transfer::decode(&msg);
+            let string_to = cross_transfer::to(&message);
+            let to = network_address::addr(&network_address::from_string(string_to));
+            let amount: u64 = translate_incoming_amount(cross_transfer::value(&message));
 
-        assert!(from == network_address::from_string(config.icon_bnusd), OnlyICONBnUSD);
-        let message: XCrossTransfer = cross_transfer::decode(&msg);
-        let string_to = cross_transfer::to(&message);
-        let to = network_address::addr(&network_address::from_string(string_to));
-        let amount: u64 = translate_incoming_amount(cross_transfer::value(&message));
-
-        balanced_dollar::mint(get_treasury_cap_mut(config), address_from_hex_string(&to),  amount, ctx);
-        xcall::execute_call_result(xcall,ticket,true,fee,ctx);
+            balanced_dollar::mint(get_treasury_cap_mut(config), address_from_hex_string(&to),  amount, ctx);
+            xcall::execute_call_result(xcall,ticket,true,fee,ctx);
+        } else{
+            xcall::execute_call_result(xcall,ticket,false,fee,ctx);
+        }
     }
 
     //Called by admin when execute call fails without a rollback
-    entry fun execute_force_rollback(_: &AdminCap, config: &Config, xcall:&mut XCallState, fee:Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
+    entry fun execute_force_rollback(config: &Config, _: &AdminCap,  xcall:&mut XCallState, fee:Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
         enforce_version(config);
         let ticket = xcall::execute_call(xcall, get_idcap(config), request_id, data, ctx);
         xcall::execute_call_result(xcall,ticket,false,fee,ctx);
@@ -193,7 +185,7 @@ module balanced::balanced_dollar_crosschain {
         xcall::execute_rollback_result(xcall,ticket,true)
     }
 
-    entry fun set_icon_bnusd(_: &AdminCap, config: &mut Config, icon_bnusd: String ){
+    entry fun set_icon_bnusd(config: &mut Config, _: &AdminCap, icon_bnusd: String ){
         enforce_version(config);
         config.icon_bnusd = icon_bnusd
     }
@@ -214,7 +206,7 @@ module balanced::balanced_dollar_crosschain {
         assert!(self.version==CURRENT_VERSION, EWrongVersion);
     }
 
-    entry fun migrate(_: &AdminCap, self: &mut Config) {
+    entry fun migrate(self: &mut Config, _: &UpgradeCap) {
         assert!(get_version(self) < CURRENT_VERSION, ENotUpgrade);
         set_version(self, CURRENT_VERSION);
     }

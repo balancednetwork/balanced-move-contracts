@@ -82,7 +82,7 @@ module balanced::asset_manager_test {
         let mut config = scenario.take_shared<Config>();
         let c = clock::create_for_testing(scenario.ctx());
         let adminCap = scenario.take_from_sender<AdminCap>();
-        register_token<BALANCED_DOLLAR>(&adminCap, &mut config, &c, 3000, 300, scenario.ctx());
+        register_token<BALANCED_DOLLAR>(&mut config, &adminCap , &c, 3000, 300, scenario.ctx());
         clock::destroy_for_testing(c);
         test_scenario::return_shared(config);
         test_scenario::return_to_sender(&scenario, adminCap);
@@ -108,7 +108,7 @@ module balanced::asset_manager_test {
         // Act
         let c = clock::create_for_testing(scenario.ctx());
         let adminCap = scenario.take_from_sender<AdminCap>();
-        register_token<BALANCED_DOLLAR>(&adminCap, &mut config, &c, 300, 300, scenario.ctx());
+        register_token<BALANCED_DOLLAR>(&mut config, &adminCap , &c, 300, 300, scenario.ctx());
         scenario.next_tx(ADMIN);
         test_scenario::return_to_sender(&scenario, adminCap);
         clock::destroy_for_testing(c);
@@ -125,10 +125,10 @@ module balanced::asset_manager_test {
         let mut config = scenario.take_shared<Config>();
         let adminCap = scenario.take_from_sender<AdminCap>();
         let c = clock::create_for_testing(scenario.ctx());
-        register_token<BALANCED_DOLLAR>(&adminCap, &mut config, &c, 300, 300, scenario.ctx());
+        register_token<BALANCED_DOLLAR>(&mut config, &adminCap , &c, 300, 300, scenario.ctx());
         scenario.next_tx(admin);
         
-        configure_rate_limit<BALANCED_DOLLAR>(&adminCap, &mut config, &c, 9000, 1000);
+        configure_rate_limit<BALANCED_DOLLAR>(&mut config, &adminCap , &c, 9000, 1000);
         clock::destroy_for_testing(c);
         test_scenario::return_shared(config);
         scenario.return_to_sender(adminCap);
@@ -142,7 +142,7 @@ module balanced::asset_manager_test {
         let mut config = scenario.take_shared<Config>();
         let c = clock::create_for_testing(scenario.ctx());
         let adminCap = scenario.take_from_sender<AdminCap>();
-        register_token<BALANCED_DOLLAR>(&adminCap, &mut config, &c, 300, 300, scenario.ctx());
+        register_token<BALANCED_DOLLAR>(&mut config, &adminCap , &c, 300, 300, scenario.ctx());
 
         scenario.next_tx(ADMIN);
         scenario = setup_connection(scenario, ADMIN);
@@ -153,7 +153,7 @@ module balanced::asset_manager_test {
         let fee = coin::mint_for_testing<SUI>(fee_amount, scenario.ctx());
         let deposited = coin::mint_for_testing<BALANCED_DOLLAR>(bnusd_amount, scenario.ctx());
         let mut xcall_state= scenario.take_shared<XCallState>();
-        deposit(&mut xcall_state, &mut config, &xcallManagerConfig, fee, deposited, option::none(), option::none(), scenario.ctx());
+        deposit(&mut config, &mut xcall_state,  &xcallManagerConfig, fee, deposited, option::none(), option::none(), scenario.ctx());
         
         test_scenario::return_shared(config);
         test_scenario::return_shared(xcallManagerConfig);
@@ -171,7 +171,7 @@ module balanced::asset_manager_test {
         let mut config = scenario.take_shared<Config>();
         let c = clock::create_for_testing(scenario.ctx());
         let adminCap = scenario.take_from_sender<AdminCap>();
-        register_token<BALANCED_DOLLAR>(&adminCap, &mut config, &c, 300, 300, scenario.ctx());
+        register_token<BALANCED_DOLLAR>(&mut config, &adminCap , &c, 300, 300, scenario.ctx());
 
         scenario.next_tx(ADMIN);
         scenario = setup_connection(scenario, ADMIN);
@@ -182,7 +182,7 @@ module balanced::asset_manager_test {
         let fee = coin::mint_for_testing<SUI>(fee_amount, scenario.ctx());
         let deposited = coin::mint_for_testing<BALANCED_DOLLAR>(bnusd_amount*2, scenario.ctx());
         let mut xcall_state= scenario.take_shared<XCallState>();
-        deposit(&mut xcall_state, &mut config, &xcallManagerConfig, fee, deposited, option::none(), option::none(), scenario.ctx());
+        deposit(&mut config, &mut xcall_state,  &xcallManagerConfig, fee, deposited, option::none(), option::none(), scenario.ctx());
         
         test_scenario::return_shared(config);
         test_scenario::return_shared(xcallManagerConfig);
@@ -228,7 +228,7 @@ module balanced::asset_manager_test {
         let fee = coin::mint_for_testing<SUI>(fee_amount, scenario.ctx());
         let deposit_fee = coin::mint_for_testing<SUI>(fee_amount, scenario.ctx());
         let deposited = coin::mint_for_testing<BALANCED_DOLLAR>(bnusd_amount*2, scenario.ctx());
-        deposit(&mut xcall_state, &mut config, &xcallManagerConfig, deposit_fee, deposited, option::none(), option::none(), scenario.ctx());
+        deposit(&mut config, &mut xcall_state,  &xcallManagerConfig, deposit_fee, deposited, option::none(), option::none(), scenario.ctx());
         asset_manager::execute_call<BALANCED_DOLLAR>( &mut config, &xcallManagerConfig, &mut xcall_state, fee, &c, 1, data, scenario.ctx());
 
         test_scenario::return_shared(config);
@@ -264,11 +264,11 @@ module balanced::asset_manager_test {
         let fee_amount = math::pow(10, 9 + 4);
         let deposit_fee = coin::mint_for_testing<SUI>(fee_amount, scenario.ctx());
         let deposited = coin::mint_for_testing<BALANCED_DOLLAR>(bnusd_amount*2, scenario.ctx());
-        deposit( &mut xcall_state, &mut config, &xcallManagerConfig, deposit_fee, deposited, option::none(), option::none(), scenario.ctx());
+        deposit( &mut config, &mut xcall_state,  &xcallManagerConfig, deposit_fee, deposited, option::none(), option::none(), scenario.ctx());
 
         let deposit_fee1 = coin::mint_for_testing<SUI>(fee_amount, scenario.ctx());
         let deposited1 = coin::mint_for_testing<BALANCED_DOLLAR>(bnusd_amount*2, scenario.ctx());
-        deposit( &mut xcall_state, &mut config, &xcallManagerConfig, deposit_fee1, deposited1, option::none(), option::none(), scenario.ctx());
+        deposit( &mut config, &mut xcall_state,  &xcallManagerConfig, deposit_fee1, deposited1, option::none(), option::none(), scenario.ctx());
         xcall::handle_message(&mut xcall_state, &conn_cap, from_nid, message, scenario.ctx());
         asset_manager::execute_rollback<BALANCED_DOLLAR>(&mut config, &mut xcall_state, 1, &c, scenario.ctx());
 
