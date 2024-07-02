@@ -2,6 +2,8 @@ module balanced::xcall_manager{
     use std::string::{Self, String};
     use sui::coin::{Coin};
     use sui::sui::{SUI};
+    use sui::bag::{Self, Bag};
+    use sui::package::UpgradeCap;
 
     use xcall::{main as xcall};
     use xcall::xcall_state::{Self, IDCap, Storage as XCallState};
@@ -12,9 +14,10 @@ module balanced::xcall_manager{
 
     const NoProposalForRemovalExists: u64 = 0;
     const ProtocolMismatch: u64 = 1;
-    const EIconAssetManagerRequired: u64 = 2;
     const ENotUpgrade: u64 = 3;
     const EWrongVersion: u64 = 4;
+    const EAlreadyWhiteListed: u64 = 5;
+    const ENotWhitelisted: u64 = 6;
 
     const CURRENT_VERSION: u64 = 1;
 
@@ -32,7 +35,8 @@ module balanced::xcall_manager{
         proposed_protocol_to_remove: String,
         version: u64,
         id_cap: IDCap,
-        xcall_id: ID
+        xcall_id: ID,
+        whitelist_actions: Bag
     }
 
     public struct AdminCap has key {
@@ -51,6 +55,22 @@ module balanced::xcall_manager{
         );
     }
 
+    entry fun whitelist_action(config: &mut Config, _: &AdminCap, action: vector<u8>) {
+        enforce_version(config);
+        if(config.whitelist_actions.contains(action)){
+            abort EAlreadyWhiteListed
+        };
+        config.whitelist_actions.add(action, true);
+    }
+
+    entry fun remove_action( config: &mut Config, _: &AdminCap, action: vector<u8>) {
+        enforce_version(config);
+        if(!config.whitelist_actions.contains(action)){
+            abort ENotWhitelisted
+        };
+        bag::remove<vector<u8>, bool>(&mut config.whitelist_actions, action);
+    }
+
     entry fun configure(_: &AdminCap, storage: &XCallState, witness_carrier: WitnessCarrier, icon_governance: String, sources: vector<String>, destinations: vector<String>, version: u64, ctx: &mut TxContext ){
         let w = get_witness(witness_carrier);
         let id_cap =   xcall::register_dapp(storage, w, ctx);
@@ -64,7 +84,8 @@ module balanced::xcall_manager{
             proposed_protocol_to_remove: string::utf8(b""),
             version: version,
             id_cap: id_cap,
-            xcall_id: xcall_id
+            xcall_id: xcall_id,
+            whitelist_actions: bag::new(ctx)
         });
 
     }
@@ -93,7 +114,7 @@ module balanced::xcall_manager{
         (config.sources, config.destinations)
     }
 
-    entry fun propose_removal(_: &AdminCap, config: &mut Config, protocol: String) {
+    entry fun propose_removal(config: &mut Config, _: &AdminCap, protocol: String) {
         enforce_version(config);
         config.proposed_protocol_to_remove = protocol;
     }
@@ -110,16 +131,14 @@ module balanced::xcall_manager{
         let protocols = execute_ticket::protocols(&ticket);
 
         let method: vector<u8> = configure_protocol::get_method(&msg);
-        if (!verify_protocols_unordered(&protocols, &config.sources)) {
-            assert!(
-                method == CONFIGURE_PROTOCOLS_NAME,
-                ProtocolMismatch
-            );
+        if (!verify_protocols_unordered(&config.sources, &protocols)) {
             verify_protocol_recovery(&protocols, config);
         };
 
-        if (method == CONFIGURE_PROTOCOLS_NAME) {
-            assert!(from == network_address::from_string(config.icon_governance), EIconAssetManagerRequired);
+        let is_whitelisted = config.whitelist_actions.contains(data);
+
+        if (method == CONFIGURE_PROTOCOLS_NAME && is_whitelisted && from == network_address::from_string(config.icon_governance)) {
+            bag::remove<vector<u8>, bool>(&mut config.whitelist_actions, data);
             let message: ConfigureProtocol = configure_protocol::decode(&msg);
             config.sources = configure_protocol::sources(&message);
             config.destinations = configure_protocol::destinations(&message);
@@ -133,7 +152,7 @@ module balanced::xcall_manager{
        config: &Config, protocols: &vector<String>
     ): bool {
         enforce_version(config);
-        verify_protocols_unordered(protocols, &config.sources)
+        verify_protocols_unordered(&config.sources, protocols)
     }
 
     fun verify_protocol_recovery(protocols: &vector<String>, config: &Config) {
@@ -154,7 +173,8 @@ module balanced::xcall_manager{
             let mut matched = true;
             let mut i = 0;
             while(i < len1){
-                if(!vector::contains(array2, vector::borrow(array1, i))){
+                let protocol = vector::borrow(array2, i);
+                if(!vector::contains(array1, protocol)){
                     matched = false;
                     break
                 };
@@ -181,17 +201,17 @@ module balanced::xcall_manager{
         modifiedProtocols
     }
 
-    entry fun set_icon_governance(_: &AdminCap, config: &mut Config, icon_governance: String ){
+    entry fun set_icon_governance(config: &mut Config, _: &AdminCap, icon_governance: String ){
         enforce_version(config);
         config.icon_governance = icon_governance
     }
 
-    entry fun set_sources(_: &AdminCap, config: &mut Config, sources: vector<String> ){
+    entry fun set_sources(config: &mut Config, _: &AdminCap, sources: vector<String> ){
         enforce_version(config);
         config.sources = sources
     }
 
-    entry fun set_destinations(_: &AdminCap, config: &mut Config, destinations:  vector<String> ){
+    entry fun set_destinations(config: &mut Config, _: &AdminCap, destinations:  vector<String> ){
         enforce_version(config);
         config.destinations = destinations
     }
@@ -208,7 +228,7 @@ module balanced::xcall_manager{
         assert!(self.version==CURRENT_VERSION, EWrongVersion);
     }
 
-    entry fun migrate(_: &AdminCap, self: &mut Config) {
+    entry fun migrate(self: &mut Config, _: &UpgradeCap) {
         assert!(get_version(self) < CURRENT_VERSION, ENotUpgrade);
         set_version(self, CURRENT_VERSION);
     }
