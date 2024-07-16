@@ -112,10 +112,12 @@ module balanced::asset_manager{
     }
 
     public fun get_xcall_manager_id(config: &Config): ID{
+        enforce_version(config);
         config.xcall_manager_id
     }
 
     public fun get_xcall_id(config: &Config): ID{
+        enforce_version(config);
         config.xcall_id
     }
 
@@ -134,16 +136,13 @@ module balanced::asset_manager{
             current_limit: 0
         };
 
-       let mut asset_manager = AssetManager<T> {
+       let asset_manager = AssetManager<T> {
             id: object::new(ctx),
             balance: balance::zero<T>(),
             rate_limit: rate_limit
         };
 
-        let asset_manager_balance = &asset_manager.balance;
-        let rate_limit = &mut asset_manager.rate_limit;
         assert!(POINTS >= percentage, EInvalidPercentage );
-        rate_limit.current_limit = (balance::value(asset_manager_balance) * percentage) / POINTS;
         
         config.assets.add(token_type, asset_manager)
     }
