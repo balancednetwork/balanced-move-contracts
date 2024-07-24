@@ -201,7 +201,7 @@ module balanced::asset_manager{
         if(rate_limit.current_limit < allowed_withdrawal){
             return min_reserve
         };
-        _reserve = rate_limit.current_limit - allowed_withdrawal;
+        let mut _reserve = rate_limit.current_limit - allowed_withdrawal;
         _reserve = if(_reserve > min_reserve){ _reserve } else { min_reserve };
         _reserve
     }
