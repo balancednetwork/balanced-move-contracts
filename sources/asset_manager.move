@@ -198,11 +198,10 @@ module balanced::asset_manager{
 
         let allowed_withdrawal = (max_withdraw * time_diff) / period;
                 
-        let mut reserve = rate_limit.current_limit;
-
-        if(rate_limit.current_limit > allowed_withdrawal){
-            reserve = rate_limit.current_limit - allowed_withdrawal;
+        if(rate_limit.current_limit < allowed_withdrawal){
+            return min_reserve
         };
+        let mut reserve = rate_limit.current_limit - allowed_withdrawal;
         reserve = if(reserve > min_reserve){ reserve } else { min_reserve };
         reserve
     }
