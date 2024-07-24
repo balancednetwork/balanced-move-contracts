@@ -198,13 +198,13 @@ module balanced::asset_manager{
 
         let allowed_withdrawal = (max_withdraw * time_diff) / period;
                 
-        let mut reserve = rate_limit.current_limit;
-
-        if(rate_limit.current_limit > allowed_withdrawal){
-            reserve = rate_limit.current_limit - allowed_withdrawal;
+        let mut _reserve = rate_limit.current_limit;
+        if(rate_limit.current_limit < allowed_withdrawal){
+            return min_reserve
         };
-        reserve = if(reserve > min_reserve){ reserve } else { min_reserve };
-        reserve
+        _reserve = rate_limit.current_limit - allowed_withdrawal;
+        _reserve = if(_reserve > min_reserve){ _reserve } else { min_reserve };
+        _reserve
     }
 
     fun verify_withdraw<T>(balance: &Balance<T>, rate_limit: &mut RateLimit<T>, c: &Clock, amount: u64) {
