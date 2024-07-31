@@ -104,7 +104,7 @@ module balanced::xcall_manager{
         witness
     }
 
-    public fun get_idcap(config: &Config): &IDCap {
+    public(package) fun get_idcap(config: &Config): &IDCap {
         enforce_version(config);
         &config.id_cap
     }
