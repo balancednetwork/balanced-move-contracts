@@ -81,7 +81,7 @@ module balanced::balanced_dollar_crosschain {
         });
     }
 
-    public fun get_idcap(config: &Config): &IDCap {
+    public(package) fun get_idcap(config: &Config): &IDCap {
         enforce_version(config);
         &config.id_cap
     }
