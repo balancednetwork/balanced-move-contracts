@@ -29,7 +29,7 @@ module balanced::balanced_dollar_crosschain {
 
     public struct REGISTER_WITNESS has drop, store {}
 
-    public struct WitnessCarrier has key, store { id: UID, witness: REGISTER_WITNESS }
+    public struct WitnessCarrier has key { id: UID, witness: REGISTER_WITNESS }
 
     public struct AdminCap has key, store{
         id: UID 
