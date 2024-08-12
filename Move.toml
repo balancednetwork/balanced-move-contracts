@@ -4,8 +4,8 @@ version = "0.0.1"
 edition = "2024.beta"
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
-xcall = { git = "https://github.com/icon-project/xcall-multi.git", subdir = "contracts/sui/xcall", rev = "feat/sui-xcall-contracts" }
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/mainnet" }
+xcall = { git = "https://github.com/icon-project/xcall-multi.git", subdir = "contracts/sui/xcall", rev = "sui-xcall-mainnet-deploy" }
 balanced_dollar = { local = "balanced_dollar" }
 
 [addresses]
