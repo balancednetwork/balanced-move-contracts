@@ -1,10 +1,14 @@
-[package]
-name = "balanced_dollar"
-version = "0.0.1"
-edition = "2024.beta"
+[addresses]
+  balanced_dollar = '0x4e7fcb1223dbb90a9e04935b372e96955dc808c99c191e15a15a5c4e73486cb1'
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
+  [dependencies.Sui]
+    git = 'https://github.com/MystenLabs/sui.git'
+    rev = 'framework/testnet'
+    subdir = 'crates/sui-framework/packages/sui-framework'
 
-[addresses]
-balanced_dollar = "0x0"
+[package]
+  edition = '2024.beta'
+  name = 'balanced_dollar'
+  published-at = '0x4e7fcb1223dbb90a9e04935b372e96955dc808c99c191e15a15a5c4e73486cb1'
+  version = '0.0.1'

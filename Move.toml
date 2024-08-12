@@ -1,12 +1,22 @@
-[package]
-name = "balanced"
-version = "0.0.1"
-edition = "2024.beta"
+[addresses]
+  balanced = '0xbaa0fb7107f9a01ef1cd10c5464534943df999c5b69829006ff14866c56b2b44'
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
-xcall = { git = "https://github.com/icon-project/xcall-multi.git", subdir = "contracts/sui/xcall", rev = "sui-xcall-testnet-deploy" }
-balanced_dollar = { local = "balanced_dollar" }
+  [dependencies.Sui]
+    git = 'https://github.com/MystenLabs/sui.git'
+    rev = 'framework/testnet'
+    subdir = 'crates/sui-framework/packages/sui-framework'
 
-[addresses]
-balanced = "0x0"
+  [dependencies.balanced_dollar]
+    local = 'balanced_dollar'
+
+  [dependencies.xcall]
+    git = 'https://github.com/icon-project/xcall-multi.git'
+    rev = 'sui-xcall-testnet-deploy'
+    subdir = 'contracts/sui/xcall'
+
+[package]
+  edition = '2024.beta'
+  name = 'balanced'
+  published-at = '0xbaa0fb7107f9a01ef1cd10c5464534943df999c5b69829006ff14866c56b2b44'
+  version = '0.0.1'
