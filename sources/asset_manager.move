@@ -66,7 +66,7 @@ module balanced::asset_manager{
         current_limit: u64
     }
 
-    public struct AdminCap has key {
+    public struct AdminCap has key,store {
         id: UID, 
     }
 

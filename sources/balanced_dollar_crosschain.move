@@ -31,7 +31,7 @@ module balanced::balanced_dollar_crosschain {
 
     public struct WitnessCarrier has key { id: UID, witness: REGISTER_WITNESS }
 
-    public struct AdminCap has key{
+    public struct AdminCap has key, store{
         id: UID 
     }
 

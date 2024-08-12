@@ -39,7 +39,7 @@ module balanced::xcall_manager{
         whitelist_actions: Bag
     }
 
-    public struct AdminCap has key {
+    public struct AdminCap has key, store {
         id: UID, 
     }
 
