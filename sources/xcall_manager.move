@@ -19,7 +19,7 @@ module balanced::xcall_manager{
     const EAlreadyWhiteListed: u64 = 5;
     const ENotWhitelisted: u64 = 6;
 
-    const CURRENT_VERSION: u64 = 1;
+    const CURRENT_VERSION: u64 = 2;
 
     const CONFIGURE_PROTOCOLS_NAME: vector<u8> = b"ConfigureProtocols";
 
