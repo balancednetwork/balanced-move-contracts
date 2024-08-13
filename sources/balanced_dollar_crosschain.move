@@ -25,7 +25,7 @@ module balanced::balanced_dollar_crosschain {
 
     const CROSS_TRANSFER: vector<u8> = b"xCrossTransfer";
     const CROSS_TRANSFER_REVERT: vector<u8> = b"xCrossTransferRevert";
-    const CURRENT_VERSION: u64 = 1;
+    const CURRENT_VERSION: u64 = 2;
 
     public struct REGISTER_WITNESS has drop, store {}
 
