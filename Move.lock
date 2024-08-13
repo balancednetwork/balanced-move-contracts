@@ -2,7 +2,7 @@
 
 [move]
 version = 2
-manifest_digest = "79C1CDFD9C912469B82A1670AEAA942F4D39388B864ABA831141C13BD3FC1B77"
+manifest_digest = "49811F545E17D1E16F45EEB3CCA804647592D2AE9C98A7C0C575F9F608A9F4D1"
 deps_digest = "060AD7E57DFB13104F21BE5F5C3759D03F0553FC3229247D9A7A6B45F50D03A3"
 dependencies = [
   { name = "Sui" },
@@ -12,11 +12,11 @@ dependencies = [
 
 [[move.package]]
 name = "MoveStdlib"
-source = { git = "https://github.com/MystenLabs/sui.git", rev = "framework/testnet", subdir = "crates/sui-framework/packages/move-stdlib" }
+source = { git = "https://github.com/MystenLabs/sui.git", rev = "framework/mainnet", subdir = "crates/sui-framework/packages/move-stdlib" }
 
 [[move.package]]
 name = "Sui"
-source = { git = "https://github.com/MystenLabs/sui.git", rev = "framework/testnet", subdir = "crates/sui-framework/packages/sui-framework" }
+source = { git = "https://github.com/MystenLabs/sui.git", rev = "framework/mainnet", subdir = "crates/sui-framework/packages/sui-framework" }
 
 dependencies = [
   { name = "MoveStdlib" },
@@ -32,7 +32,7 @@ dependencies = [
 
 [[move.package]]
 name = "sui_rlp"
-source = { git = "https://github.com/icon-project/xcall-multi.git", rev = "feat/sui-xcall-contracts", subdir = "contracts/sui/libs/sui_rlp" }
+source = { git = "https://github.com/icon-project/xcall-multi.git", rev = "sui-xcall-mainnet-deploy", subdir = "contracts/sui/libs/sui_rlp" }
 
 dependencies = [
   { name = "Sui" },
@@ -40,7 +40,7 @@ dependencies = [
 
 [[move.package]]
 name = "xcall"
-source = { git = "https://github.com/icon-project/xcall-multi.git", rev = "feat/sui-xcall-contracts", subdir = "contracts/sui/xcall" }
+source = { git = "https://github.com/icon-project/xcall-multi.git", rev = "sui-xcall-mainnet-deploy", subdir = "contracts/sui/xcall" }
 
 dependencies = [
   { name = "Sui" },
@@ -48,7 +48,7 @@ dependencies = [
 ]
 
 [move.toolchain-version]
-compiler-version = "1.25.1"
+compiler-version = "1.30.1"
 edition = "2024.beta"
 flavor = "sui"
 
@@ -58,4 +58,10 @@ flavor = "sui"
 chain-id = "bd665407"
 original-published-id = "0xc3b318607b37719d40d57063b264ad13222cd7427ea8699c98e7f5480f846444"
 latest-published-id = "0xc3b318607b37719d40d57063b264ad13222cd7427ea8699c98e7f5480f846444"
+published-version = "1"
+
+[env.mainnet]
+chain-id = "35834a8a"
+original-published-id = "0x8e5eea2ec2d387432a423813107bd873dfb05c2ed22a9c8f61d55211b759560b"
+latest-published-id = "0x8e5eea2ec2d387432a423813107bd873dfb05c2ed22a9c8f61d55211b759560b"
 published-version = "1"
