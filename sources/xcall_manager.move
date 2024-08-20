@@ -20,7 +20,7 @@ module balanced::xcall_manager{
     const EAlreadyWhiteListed: u64 = 5;
     const ENotWhitelisted: u64 = 6;
 
-    const CURRENT_VERSION: u64 = 2;
+    const CURRENT_VERSION: u64 = 3;
 
     const CONFIGURE_PROTOCOLS_NAME: vector<u8> = b"ConfigureProtocols";
 
@@ -124,11 +124,21 @@ module balanced::xcall_manager{
         (get_xcall_id(config))
     }
 
-    entry fun get_execute_params(config: &Config): vector<String>{
+    entry fun get_execute_params(config: &Config, _msg:vector<u8>): (vector<String>,vector<String>){
+        let type_args:vector<String> = vector::empty();
+
         let mut result:vector<String> = vector::empty();
         result.push_back(xcall_utils::id_to_hex_string(&get_xcall_id(config)));
-        result.push_back(b"coin".to_string());
-        result
+        result.push_back(b"coin".to_string());       
+        (type_args,result)
+    }
+
+    entry fun get_rollback_params(config: &Config, _msg:vector<u8>): (vector<String>,vector<String>){
+        let type_args:vector<String> = vector::empty();
+
+        let mut result:vector<String> = vector::empty();
+        result.push_back(xcall_utils::id_to_hex_string(&get_xcall_id(config)));
+        (type_args, result)
     }
 
     entry fun execute_call(config: &mut Config, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){

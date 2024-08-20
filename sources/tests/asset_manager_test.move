@@ -49,11 +49,11 @@ module balanced::asset_manager_test {
         let sources = vector[string::utf8(b"centralized-1")];
         let destinations = vector[string::utf8(b"icon/hx234"), string::utf8(b"icon/hx334")];
         let xm_carrier = scenario.take_from_sender<XcallManagerWitnessCarrier>();
-        xcall_manager::configure(&managerAdminCap, &xcall_state, xm_carrier, string::utf8(ICON_ASSET_MANAGER),  sources, destinations, 2, scenario.ctx());
+        xcall_manager::configure(&managerAdminCap, &xcall_state, xm_carrier, string::utf8(ICON_ASSET_MANAGER),  sources, destinations, 3, scenario.ctx());
 
         scenario.next_tx(admin);
         let xcallManagerConfig: xcall_manager::Config  = scenario.take_shared<xcall_manager::Config>();
-        configure(&adminCap, &xcallManagerConfig, &xcall_state, carrier, string::utf8(ICON_ASSET_MANAGER), 2, scenario.ctx());
+        configure(&adminCap, &xcallManagerConfig, &xcall_state, carrier, string::utf8(ICON_ASSET_MANAGER), 3, scenario.ctx());
       
         test_scenario::return_shared<XCallState>(xcall_state);
         test_scenario::return_shared<xcall_manager::Config>(xcallManagerConfig);

@@ -35,7 +35,7 @@ module balanced::xcall_manager_test {
         let destinations = vector[string::utf8(b"icon/hx234"), string::utf8(b"icon/hx334")];
         let carrier = scenario.take_from_sender<WitnessCarrier>();
         let xcall_state= scenario.take_shared<XCallState>();
-        xcall_manager::configure(&adminCap, &xcall_state, carrier, string::utf8(b"icon/hx337"),  sources, destinations, 2, scenario.ctx());
+        xcall_manager::configure(&adminCap, &xcall_state, carrier, string::utf8(b"icon/hx337"),  sources, destinations, 3, scenario.ctx());
         test_scenario::return_shared<XCallState>(xcall_state);
         scenario.return_to_sender(adminCap);
         scenario.next_tx(admin);
@@ -90,7 +90,7 @@ module balanced::xcall_manager_test {
         let destinations = vector[string::utf8(b"icon/hx234"), string::utf8(b"icon/hx334")];
         let carrier = scenario.take_from_sender<WitnessCarrier>();
         let xcall_state= scenario.take_shared<XCallState>();
-        xcall_manager::configure(&adminCap, &xcall_state, carrier, string::utf8(b"icon/hx337"),  sources, destinations, 2, scenario.ctx());
+        xcall_manager::configure(&adminCap, &xcall_state, carrier, string::utf8(b"icon/hx337"),  sources, destinations, 3, scenario.ctx());
         test_scenario::return_shared<XCallState>(xcall_state);
         scenario.return_to_sender(adminCap);
         scenario.next_tx(admin);
