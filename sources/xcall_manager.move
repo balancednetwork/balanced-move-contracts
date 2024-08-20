@@ -6,6 +6,7 @@ module balanced::xcall_manager{
     use sui::package::UpgradeCap;
 
     use xcall::{main as xcall};
+    use xcall::xcall_utils;
     use xcall::xcall_state::{Self, IDCap, Storage as XCallState};
     use xcall::network_address::{Self};
     use xcall::execute_ticket::{Self};
@@ -121,6 +122,13 @@ module balanced::xcall_manager{
 
     entry fun get_execute_call_params(config: &Config): (ID){
         (get_xcall_id(config))
+    }
+
+    entry fun get_execute_params(config: &Config): vector<String>{
+        let mut result:vector<String> = vector::empty();
+        result.push_back(xcall_utils::id_to_hex_string(&get_xcall_id(config)));
+        result.push_back(b"coin".to_string());
+        result
     }
 
     entry fun execute_call(config: &mut Config, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
