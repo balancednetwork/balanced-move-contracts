@@ -16,7 +16,7 @@ module balanced::balanced_dollar_crosschain {
     use balanced::xcall_manager::{Self, Config as XcallManagerConfig};
     use balanced::cross_transfer::{Self, wrap_cross_transfer, XCrossTransfer};
     use balanced::cross_transfer_revert::{Self, wrap_cross_transfer_revert, XCrossTransferRevert};
-    use balanced::balanced_utils::{address_to_hex_string, address_from_hex_string};
+    use balanced::balanced_utils::{address_to_hex_string, address_from_hex_string, create_execute_params, ExecuteParams};
     use balanced_dollar::balanced_dollar::{Self, BALANCED_DOLLAR};
 
     const EAmountLessThanMinimumAmount: u64 = 1;
@@ -139,22 +139,22 @@ module balanced::balanced_dollar_crosschain {
         (get_xcall_manager_id(config), get_xcall_id(config))
     }
 
-    entry fun get_execute_params(config: &Config, _msg:vector<u8>): (vector<String>,vector<String>){
+    entry fun get_execute_params(config: &Config, _msg:vector<u8>): ExecuteParams{
         let type_args:vector<String> = vector::empty();
 
         let mut result:vector<String> = vector::empty();
         result.push_back(xcall_utils::id_to_hex_string(&get_xcall_manager_id(config)));
         result.push_back(xcall_utils::id_to_hex_string(&get_xcall_id(config)));
         result.push_back(b"coin".to_string());       
-        (type_args,result)
+        create_execute_params(type_args, result)
     }
 
-    entry fun get_rollback_params(config: &Config, _msg:vector<u8>): (vector<String>,vector<String>){
+    entry fun get_rollback_params(config: &Config, _msg:vector<u8>): ExecuteParams{
         let type_args:vector<String> = vector::empty();
 
         let mut result:vector<String> = vector::empty();
         result.push_back(xcall_utils::id_to_hex_string(&get_xcall_id(config)));
-        (type_args, result)
+        create_execute_params(type_args, result)
     }
 
     entry fun execute_call(config: &mut Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
