@@ -6,6 +6,7 @@ module balanced::balanced_dollar_crosschain {
     use sui::package::UpgradeCap;
 
     use xcall::{main as xcall};
+    use xcall::xcall_utils;
     use xcall::xcall_state::{Self, Storage as XCallState, IDCap};
     use xcall::envelope::{Self};
     use xcall::network_address::{Self};
@@ -25,7 +26,7 @@ module balanced::balanced_dollar_crosschain {
 
     const CROSS_TRANSFER: vector<u8> = b"xCrossTransfer";
     const CROSS_TRANSFER_REVERT: vector<u8> = b"xCrossTransferRevert";
-    const CURRENT_VERSION: u64 = 2;
+    const CURRENT_VERSION: u64 = 3;
 
     public struct REGISTER_WITNESS has drop, store {}
 
@@ -136,6 +137,24 @@ module balanced::balanced_dollar_crosschain {
 
     entry fun get_execute_call_params(config: &Config): (ID, ID){
         (get_xcall_manager_id(config), get_xcall_id(config))
+    }
+
+    entry fun get_execute_params(config: &Config, _msg:vector<u8>): (vector<String>,vector<String>){
+        let type_args:vector<String> = vector::empty();
+
+        let mut result:vector<String> = vector::empty();
+        result.push_back(xcall_utils::id_to_hex_string(&get_xcall_manager_id(config)));
+        result.push_back(xcall_utils::id_to_hex_string(&get_xcall_id(config)));
+        result.push_back(b"coin".to_string());       
+        (type_args,result)
+    }
+
+    entry fun get_rollback_params(config: &Config, _msg:vector<u8>): (vector<String>,vector<String>){
+        let type_args:vector<String> = vector::empty();
+
+        let mut result:vector<String> = vector::empty();
+        result.push_back(xcall_utils::id_to_hex_string(&get_xcall_id(config)));
+        (type_args, result)
     }
 
     entry fun execute_call(config: &mut Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){

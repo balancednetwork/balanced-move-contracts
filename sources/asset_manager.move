@@ -8,6 +8,7 @@ module balanced::asset_manager{
     use sui::bag::{Self, Bag};
 
     use xcall::{main as xcall};
+    use xcall::xcall_utils;
     use xcall::xcall_state::{Self, Storage as XCallState, IDCap};
     use xcall::envelope::{Self};
     use xcall::network_address::{Self};
@@ -36,7 +37,7 @@ module balanced::asset_manager{
     const EAlreadyRegistered: u64 = 7;
     const EWrongVersion: u64 = 8;
     const EInvalidPercentage: u64 = 9;
-    const CURRENT_VERSION: u64 = 2;
+    const CURRENT_VERSION: u64 = 3;
 
     public struct REGISTER_WITNESS has drop, store {}
 
@@ -268,6 +269,27 @@ module balanced::asset_manager{
 
     entry fun get_execute_call_params(config: &Config): (ID, ID){
         (get_xcall_manager_id(config), get_xcall_id(config))
+    }
+
+    entry fun get_execute_params(config: &Config, msg:vector<u8>): (vector<String>,vector<String>){
+        let mut type_args:vector<String> = vector::empty();
+        type_args.push_back(get_withdraw_token_type(msg));
+
+        let mut result:vector<String> = vector::empty();
+        result.push_back(xcall_utils::id_to_hex_string(&get_xcall_manager_id(config)));
+        result.push_back(xcall_utils::id_to_hex_string(&get_xcall_id(config)));
+        result.push_back(b"coin".to_string());  
+        result.push_back(b"clock".to_string());            
+        (type_args,result)
+    }
+
+    entry fun get_rollback_params(config: &Config, msg:vector<u8>): (vector<String>,vector<String>){
+        let mut type_args:vector<String> = vector::empty();
+        type_args.push_back(get_withdraw_token_type(msg));
+
+        let mut result:vector<String> = vector::empty();
+        result.push_back(xcall_utils::id_to_hex_string(&get_xcall_id(config)));
+        (type_args, result)
     }
 
     entry fun execute_call<T>(config: &mut Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee:Coin<SUI>, c: &Clock, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
