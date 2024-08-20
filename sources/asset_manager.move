@@ -8,6 +8,7 @@ module balanced::asset_manager{
     use sui::bag::{Self, Bag};
 
     use xcall::{main as xcall};
+    use xcall::xcall_utils;
     use xcall::xcall_state::{Self, Storage as XCallState, IDCap};
     use xcall::envelope::{Self};
     use xcall::network_address::{Self};
@@ -269,6 +270,16 @@ module balanced::asset_manager{
     entry fun get_execute_call_params(config: &Config): (ID, ID){
         (get_xcall_manager_id(config), get_xcall_id(config))
     }
+
+    entry fun get_execute_params(config: &Config): vector<String>{
+        let mut result:vector<String> = vector::empty();
+        result.push_back(xcall_utils::id_to_hex_string(&get_xcall_manager_id(config)));
+        result.push_back(xcall_utils::id_to_hex_string(&get_xcall_id(config)));
+        result.push_back(b"coin".to_string());
+        result.push_back(b"clock".to_string());       
+        result
+    }
+
 
     entry fun execute_call<T>(config: &mut Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee:Coin<SUI>, c: &Clock, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
         enforce_version(config);
