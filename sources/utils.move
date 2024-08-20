@@ -4,6 +4,18 @@ module balanced::balanced_utils {
     use sui::bcs::{Self};
     use sui::hex::{Self};
 
+    public struct ExecuteParams has drop {
+        type_args: vector<String>, 
+        args: vector<String>,
+    }
+
+    public fun create_execute_params(type_args: vector<String>, args: vector<String>): ExecuteParams {
+        ExecuteParams{
+            type_args:type_args,
+            args:args
+        }
+    }
+
     public fun address_to_hex_string(address:&address): String {
         let bytes = bcs::to_bytes(address);
         let hex_bytes = hex::encode(bytes);
