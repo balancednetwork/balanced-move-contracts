@@ -37,7 +37,7 @@ module balanced::asset_manager{
     const EAlreadyRegistered: u64 = 7;
     const EWrongVersion: u64 = 8;
     const EInvalidPercentage: u64 = 9;
-    const CURRENT_VERSION: u64 = 2;
+    const CURRENT_VERSION: u64 = 3;
 
     public struct REGISTER_WITNESS has drop, store {}
 
@@ -279,7 +279,6 @@ module balanced::asset_manager{
         result.push_back(b"clock".to_string());       
         result
     }
-
 
     entry fun execute_call<T>(config: &mut Config, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee:Coin<SUI>, c: &Clock, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
         enforce_version(config);
