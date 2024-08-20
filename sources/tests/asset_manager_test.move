@@ -20,7 +20,7 @@ module balanced::asset_manager_test {
     use xcall::message_result::{Self};
 
     use balanced::asset_manager::{Self, Config, AdminCap, configure, deposit, register_token, WitnessCarrier, configure_rate_limit };
-    use balanced::balanced_dollar::{BALANCED_DOLLAR};
+    use balanced_dollar::balanced_dollar::{BALANCED_DOLLAR};
     use balanced::xcall_manager::{Self, WitnessCarrier as XcallManagerWitnessCarrier};
 
     use balanced::withdraw_to::{wrap_withdraw_to, encode};
