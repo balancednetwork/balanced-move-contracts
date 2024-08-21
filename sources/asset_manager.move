@@ -37,7 +37,7 @@ module balanced::asset_manager{
     const EAlreadyRegistered: u64 = 7;
     const EWrongVersion: u64 = 8;
     const EInvalidPercentage: u64 = 9;
-    const CURRENT_VERSION: u64 = 3;
+    const CURRENT_VERSION: u64 = 4;
 
     public struct REGISTER_WITNESS has drop, store {}
 
@@ -120,6 +120,11 @@ module balanced::asset_manager{
     public fun get_xcall_id(config: &Config): ID{
         enforce_version(config);
         config.xcall_id
+    }
+
+    public fun get_config_id(config: &Config): ID{
+        enforce_version(config);
+        config.id.to_inner()
     }
 
     entry fun register_token<T>(config:&mut Config, _: &AdminCap, c: &Clock,
@@ -276,10 +281,13 @@ module balanced::asset_manager{
         type_args.push_back(get_withdraw_token_type(msg));
 
         let mut result:vector<String> = vector::empty();
+        result.push_back(xcall_utils::id_to_hex_string(&get_config_id(config)));
         result.push_back(xcall_utils::id_to_hex_string(&get_xcall_manager_id(config)));
         result.push_back(xcall_utils::id_to_hex_string(&get_xcall_id(config)));
         result.push_back(b"coin".to_string());  
-        result.push_back(b"clock".to_string());            
+        result.push_back(b"clock".to_string()); 
+        result.push_back(b"request_id".to_string());
+        result.push_back(b"data".to_string());            
         
         create_execute_params(type_args, result)
     }
@@ -289,8 +297,10 @@ module balanced::asset_manager{
         type_args.push_back(get_withdraw_token_type(msg));
 
         let mut result:vector<String> = vector::empty();
+        result.push_back(xcall_utils::id_to_hex_string(&get_config_id(config)));
         result.push_back(xcall_utils::id_to_hex_string(&get_xcall_id(config)));
-        
+        result.push_back(b"sn".to_string());
+        result.push_back(b"clock".to_string()); 
         create_execute_params(type_args, result)
 
     }
