@@ -43,9 +43,9 @@ sui client call --package <package_id> --module <module_name> --function <functi
 
 This guide provides an overview of the key functions for interacting with the Sui blockchain within your frontend application. These functions are part of the Asset Manager, Balanced Dollar, and XCall modules, which allow for token deposits, cross-chain transfers, and cross-chain calls.
 
-## Important Note: Statelessness in Sui
+### Important Note: Statelessness in Sui
 
-Sui is a stateless blockchain, which means that unlike stateful blockchains, it does not automatically keep track of states between transactions. Due to this, when interacting with Sui, you need to provide certain storage IDs manually to manage the state. This is why additional parameters like `config`, `xcallState`, and others are required when calling functions.
+Sui is a stateless blockchain, which means that unlike stateful blockchains, it does not automatically keep track of states between transactions. Due to this, when interacting with Sui, you need to provide certain storage IDs manually to manage the state. This is why additional parameters like `config`, `xcallState`, `xcall_manager_config`, and others are required when calling functions.
 
 ---
 
@@ -100,13 +100,24 @@ Transfers `BALANCED_DOLLAR` tokens across chains.
 function cross_transfer(
     config: Config,            // Represents the asset manager's state.
     xcall_state: XCallState,   // Represents the xcall state.
-    xcall_manager_config: XcallManagerConfig,  // Configuration for the xcall manager.
+    xcall_manager_config: XcallManagerConfig,  // Represents for the xcall manager state.
     fee: Coin<SUI>,            // A fee in SUI tokens for the transaction.
     token: Coin<BALANCED_DOLLAR>,  // The BALANCED_DOLLAR token to transfer. The token object will be destroyed, so split it to the needed amount.
     to: string,                // The recipient's address on the destination chain.
     data?: Uint8Array,         // (Optional) Any additional data to attach to the transfer.
     ctx: TxContext             // The transaction context for handling the transaction.
 );
+```
+
+### XCallManager Module
+
+#### get_protocols
+The `get_protocols` function retrieves the sources and destinations associated with a given configuration. 
+
+```typescript
+function get_protocols(
+    config: Config               // Represents for the xcall manager state
+): [string[], string[]];        // Returns a tuple containing two arrays: sources and destinations.
 ```
 
 ---
@@ -126,3 +137,17 @@ function send_call_ua(
     ctx: TxContext             // The transaction context for handling the transaction.
 );
 ```
+
+#### `get_fee`
+
+The `get_fee` function calculates and returns the fee required for a cross-chain transaction.
+
+```typescript
+function get_fee(
+    storage: Storage,                 // The storage object that holds the state of the xcall.
+    netId: string,                    // The network ID where the transaction is headed.
+    rollback: boolean,                // A boolean flag indicating whether the transaction is a rollback.
+    sources?: string[]                // An optional array of source connections.
+): number
+```
+
