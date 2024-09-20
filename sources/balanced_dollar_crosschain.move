@@ -26,7 +26,7 @@ module balanced::balanced_dollar_crosschain {
 
     const CROSS_TRANSFER: vector<u8> = b"xCrossTransfer";
     const CROSS_TRANSFER_REVERT: vector<u8> = b"xCrossTransferRevert";
-    const CURRENT_VERSION: u64 = 3;
+    const CURRENT_VERSION: u64 = 4;
 
     public struct REGISTER_WITNESS has drop, store {}
 
@@ -63,6 +63,11 @@ module balanced::balanced_dollar_crosschain {
         let WitnessCarrier { id, witness } = carrier;
         id.delete();
         witness
+    }
+
+    public fun get_config_id(config: &Config): ID{
+        enforce_version(config);
+        config.id.to_inner()
     }
 
     entry fun configure(_: &AdminCap, treasury_cap: TreasuryCap<BALANCED_DOLLAR>, xcall_manager_config: &XcallManagerConfig, storage: &XCallState, witness_carrier: WitnessCarrier, icon_bnusd: String, version: u64, ctx: &mut TxContext ){
@@ -143,9 +148,12 @@ module balanced::balanced_dollar_crosschain {
         let type_args:vector<String> = vector::empty();
 
         let mut result:vector<String> = vector::empty();
+        result.push_back(xcall_utils::id_to_hex_string(&get_config_id(config)));
         result.push_back(xcall_utils::id_to_hex_string(&get_xcall_manager_id(config)));
         result.push_back(xcall_utils::id_to_hex_string(&get_xcall_id(config)));
-        result.push_back(b"coin".to_string());       
+        result.push_back(b"coin".to_string());  
+        result.push_back(b"request_id".to_string());
+        result.push_back(b"data".to_string());        
         create_execute_params(type_args, result)
     }
 
@@ -153,7 +161,9 @@ module balanced::balanced_dollar_crosschain {
         let type_args:vector<String> = vector::empty();
 
         let mut result:vector<String> = vector::empty();
+        result.push_back(xcall_utils::id_to_hex_string(&get_config_id(config)));
         result.push_back(xcall_utils::id_to_hex_string(&get_xcall_id(config)));
+        result.push_back(b"sn".to_string());        
         create_execute_params(type_args, result)
     }
 

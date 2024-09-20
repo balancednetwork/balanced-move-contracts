@@ -21,7 +21,7 @@ module balanced::xcall_manager{
     const EAlreadyWhiteListed: u64 = 5;
     const ENotWhitelisted: u64 = 6;
 
-    const CURRENT_VERSION: u64 = 3;
+    const CURRENT_VERSION: u64 = 4;
 
     const CONFIGURE_PROTOCOLS_NAME: vector<u8> = b"ConfigureProtocols";
 
@@ -100,6 +100,11 @@ module balanced::xcall_manager{
         config.xcall_id
     }
 
+    public fun get_config_id(config: &Config): ID{
+        enforce_version(config);
+        config.id.to_inner()
+    }
+
     fun get_witness(carrier: WitnessCarrier): REGISTER_WITNESS {
         let WitnessCarrier { id, witness } = carrier;
         id.delete();
@@ -129,8 +134,11 @@ module balanced::xcall_manager{
         let type_args:vector<String> = vector::empty();
 
         let mut result:vector<String> = vector::empty();
+        result.push_back(xcall_utils::id_to_hex_string(&get_config_id(config)));
         result.push_back(xcall_utils::id_to_hex_string(&get_xcall_id(config)));
-        result.push_back(b"coin".to_string());       
+        result.push_back(b"coin".to_string());  
+        result.push_back(b"request_id".to_string());
+        result.push_back(b"data".to_string());        
         create_execute_params(type_args, result)
     }
 
