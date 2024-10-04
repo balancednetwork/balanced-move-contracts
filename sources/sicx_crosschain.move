@@ -26,7 +26,7 @@ module balanced::sicx_crosschain {
 
     const CROSS_TRANSFER: vector<u8> = b"xCrossTransfer";
     const CROSS_TRANSFER_REVERT: vector<u8> = b"xCrossTransferRevert";
-    const CURRENT_VERSION: u64 = 4;
+    const CURRENT_VERSION: u64 = 1;
 
     public struct REGISTER_WITNESS has drop, store {}
 
@@ -38,7 +38,7 @@ module balanced::sicx_crosschain {
 
     public struct Config has key, store{
         id: UID, 
-        icon_bnusd: String,
+        icon_sicx: String,
         version: u64,
         id_cap: IDCap,
         xcall_manager_id: ID, 
@@ -70,7 +70,7 @@ module balanced::sicx_crosschain {
         config.id.to_inner()
     }
 
-    entry fun configure(_: &AdminCap, treasury_cap: TreasuryCap<SICX>, xcall_manager_config: &XcallManagerConfig, storage: &XCallState, witness_carrier: WitnessCarrier, icon_bnusd: String, version: u64, ctx: &mut TxContext ){
+    entry fun configure(_: &AdminCap, treasury_cap: TreasuryCap<SICX>, xcall_manager_config: &XcallManagerConfig, storage: &XCallState, witness_carrier: WitnessCarrier, icon_sicx: String, version: u64, ctx: &mut TxContext ){
         let w = get_witness(witness_carrier);
         let id_cap =   xcall::register_dapp(storage, w, ctx);
         let xcall_manager_id = xcall_manager::get_id(xcall_manager_config);
@@ -78,7 +78,7 @@ module balanced::sicx_crosschain {
 
         transfer::share_object(Config {
             id: object::new(ctx),
-            icon_bnusd: icon_bnusd,
+            icon_sicx: icon_sicx,
             version: version,
             id_cap: id_cap,
             xcall_manager_id: xcall_manager_id,
@@ -137,7 +137,7 @@ module balanced::sicx_crosschain {
         let rollback = cross_transfer_revert::encode(&rollbackStruct, CROSS_TRANSFER_REVERT);
         
         let envelope = envelope::wrap_call_message_rollback(xcallMessage, rollback, sources, destinations);
-        xcall::send_call(xcall_state, fee, get_idcap(config), config.icon_bnusd, envelope::encode(&envelope), ctx);
+        xcall::send_call(xcall_state, fee, get_idcap(config), config.icon_sicx, envelope::encode(&envelope), ctx);
     }
 
     entry fun get_execute_call_params(config: &Config): (ID, ID){
@@ -177,7 +177,7 @@ module balanced::sicx_crosschain {
         let verified = xcall_manager::verify_protocols(xcall_manager_config, &protocols);
         let method: vector<u8> = cross_transfer::get_method(&msg);
 
-        if (verified && method == CROSS_TRANSFER && from == network_address::from_string(config.icon_bnusd)){
+        if (verified && method == CROSS_TRANSFER && from == network_address::from_string(config.icon_sicx)){
             let message: XCrossTransfer = cross_transfer::decode(&msg);
             let string_to = cross_transfer::to(&message);
             let to = network_address::addr(&network_address::from_string(string_to));
@@ -212,11 +212,6 @@ module balanced::sicx_crosschain {
         let amount: u64 = cross_transfer_revert::value(&message);
         sicx::mint(get_treasury_cap_mut(config), to, amount,  ctx);
         xcall::execute_rollback_result(xcall,ticket,true)
-    }
-
-    entry fun set_icon_bnusd(config: &mut Config, _: &AdminCap, icon_bnusd: String ){
-        enforce_version(config);
-        config.icon_bnusd = icon_bnusd
     }
     
     fun get_treasury_cap_mut(config: &mut Config): &mut TreasuryCap<SICX>{
