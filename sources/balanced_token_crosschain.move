@@ -46,8 +46,9 @@ module balanced::balanced_token_crosschain {
         balanced_treasury_cap: TreasuryCap<BALANCED_TOKEN>
     }
 
-    fun init(ctx: &mut TxContext) {
-       
+    //This function is equivalent to init, but since this module is added after package publish, need to create this, NEED TO CALL ONLY ONCE
+    entry fun initialize(_: &UpgradeCap, ctx: &mut TxContext) {
+        assert!(CURRENT_VERSION==1, EWrongVersion);
         transfer::transfer(AdminCap {
             id: object::new(ctx)
         }, ctx.sender());
@@ -56,7 +57,6 @@ module balanced::balanced_token_crosschain {
             WitnessCarrier { id: object::new(ctx), witness:REGISTER_WITNESS{} },
             ctx.sender()
         );
-        
     }
 
     fun get_witness(carrier: WitnessCarrier): REGISTER_WITNESS {
@@ -247,12 +247,6 @@ module balanced::balanced_token_crosschain {
      #[test_only]
     public fun get_treasury_cap_for_testing(config: &mut Config): &mut TreasuryCap<BALANCED_TOKEN> {
         &mut config.balanced_treasury_cap
-    }
-
-    #[test_only]
-    /// Wrapper of module initializer for testing
-    public fun init_test(ctx: &mut TxContext) {
-        init(ctx)
     }
 
 }
