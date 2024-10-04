@@ -241,12 +241,12 @@ module balanced::balanced_token_crosschain {
     }
     
     fun translate_outgoing_amount(amount: u64): u128 {
-        let multiplier = math::pow(10, 9) as u128;
+        let multiplier = math::pow(10, 3) as u128;
         (amount as u128) * multiplier 
     }
 
     fun translate_incoming_amount(amount: u128): u64 {
-        (amount / ( math::pow(10, 9) as u128 ) ) as u64
+        (amount / ( math::pow(10, 3) as u128 ) ) as u64
     }
 
      #[test_only]
