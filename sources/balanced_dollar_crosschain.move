@@ -23,10 +23,12 @@ module balanced::balanced_dollar_crosschain {
     const UnknownMessageType: u64 = 4;
     const ENotUpgrade: u64 = 6;
     const EWrongVersion: u64 = 7;
+    const EAmountNotEqualToIconAmount: u64 = 8;
 
     const CROSS_TRANSFER: vector<u8> = b"xCrossTransfer";
     const CROSS_TRANSFER_REVERT: vector<u8> = b"xCrossTransferRevert";
     const CURRENT_VERSION: u64 = 4;
+    const DIVISOR: u128 = 1000000000;
 
     public struct REGISTER_WITNESS has drop, store {}
 
@@ -123,6 +125,58 @@ module balanced::balanced_dollar_crosschain {
             fromAddress,
             to,
             translate_outgoing_amount(amount),
+            messageData
+        );
+
+        let rollbackStruct = wrap_cross_transfer_revert(
+            from,
+            amount
+        );
+
+        let (sources, destinations) = xcall_manager::get_protocals(xcall_manager_config);
+
+        let xcallMessage = cross_transfer::encode(&xcallMessageStruct, CROSS_TRANSFER);
+        let rollback = cross_transfer_revert::encode(&rollbackStruct, CROSS_TRANSFER_REVERT);
+        
+        let envelope = envelope::wrap_call_message_rollback(xcallMessage, rollback, sources, destinations);
+        xcall::send_call(xcall_state, fee, get_idcap(config), config.icon_bnusd, envelope::encode(&envelope), ctx);
+    }
+
+    entry fun cross_transfer_exact(
+        config: &mut Config,
+        xcall_state: &mut XCallState,
+        xcall_manager_config: &XcallManagerConfig,
+        fee: Coin<SUI>,
+        token: Coin<BALANCED_DOLLAR>,
+        icon_bnusd_amount: u128,
+        to: String,
+        data: Option<vector<u8>>,
+        ctx: &mut TxContext
+    ) {
+        enforce_version(config);
+        let messageData = option::get_with_default(&data, b"");
+        let (amount, cross_transfer_value) = if(icon_bnusd_amount > 0){
+            let mut amount = (icon_bnusd_amount / DIVISOR) as u64;
+            if(icon_bnusd_amount % DIVISOR > 0){
+                amount = amount+1
+            };
+            assert!(amount == coin::value(&token), EAmountNotEqualToIconAmount);
+            (amount, icon_bnusd_amount)
+        }else{
+            let amount = coin::value(&token);
+            (amount, translate_outgoing_amount(amount))
+        };
+
+        assert!(amount>0, EAmountLessThanMinimumAmount);
+        balanced_dollar::burn(get_treasury_cap_mut(config), token);
+        let from = ctx.sender();
+
+        let fromAddress = address_to_hex_string(&from);
+
+        let xcallMessageStruct = wrap_cross_transfer(
+            fromAddress,
+            to,
+            cross_transfer_value,
             messageData
         );
 
