@@ -155,17 +155,16 @@ module balanced::balanced_dollar_crosschain {
     ) {
         enforce_version(config);
         let messageData = option::get_with_default(&data, b"");
-        let mut amount ;
-        let mut cross_transfer_value = icon_bnusd_amount;
-        if(icon_bnusd_amount > 0){
-            amount = (icon_bnusd_amount / DIVISOR) as u64;
+        let (amount, cross_transfer_value) = if(icon_bnusd_amount > 0){
+            let mut amount = (icon_bnusd_amount / DIVISOR) as u64;
             if(icon_bnusd_amount % DIVISOR > 0){
                 amount = amount+1
             };
             assert!(amount == coin::value(&token), EAmountNotEqualToIconAmount);
+            (amount, icon_bnusd_amount)
         }else{
-            amount = coin::value(&token);
-            cross_transfer_value = translate_outgoing_amount(amount);
+            let amount = coin::value(&token);
+            (amount, translate_outgoing_amount(amount))
         };
 
         assert!(amount>0, EAmountLessThanMinimumAmount);
