@@ -134,7 +134,7 @@ module balanced::balanced_dollar_test {
 
         let mut xcall_state= scenario.take_shared<XCallState>();
     
-        cross_transfer_exact(&mut config, &mut xcall_state,  &xcallManagerConfig, fee, deposited, option::some(1000000000000001234), TO.to_string(), option::none(), scenario.ctx());
+        cross_transfer_exact(&mut config, &mut xcall_state,  &xcallManagerConfig, fee, deposited, 1000000000000001234, TO.to_string(), option::none(), scenario.ctx());
         test_scenario::return_shared(xcallManagerConfig);
         test_scenario::return_shared( config);
         test_scenario::return_shared(xcall_state);
@@ -161,7 +161,7 @@ module balanced::balanced_dollar_test {
 
         let mut xcall_state= scenario.take_shared<XCallState>();
     
-        cross_transfer_exact(&mut config, &mut xcall_state,  &xcallManagerConfig, fee, deposited, option::none(), TO.to_string(), option::none(), scenario.ctx());
+        cross_transfer_exact(&mut config, &mut xcall_state,  &xcallManagerConfig, fee, deposited, 0, TO.to_string(), option::none(), scenario.ctx());
         test_scenario::return_shared(xcallManagerConfig);
         test_scenario::return_shared( config);
         test_scenario::return_shared(xcall_state);
@@ -188,7 +188,7 @@ module balanced::balanced_dollar_test {
 
         let mut xcall_state= scenario.take_shared<XCallState>();
     
-        cross_transfer_exact(&mut config, &mut xcall_state,  &xcallManagerConfig, fee, deposited, option::some(1000000000000001234), TO.to_string(), option::none(), scenario.ctx());
+        cross_transfer_exact(&mut config, &mut xcall_state,  &xcallManagerConfig, fee, deposited, 1000000000000001234, TO.to_string(), option::none(), scenario.ctx());
         test_scenario::return_shared(xcallManagerConfig);
         test_scenario::return_shared( config);
         test_scenario::return_shared(xcall_state);

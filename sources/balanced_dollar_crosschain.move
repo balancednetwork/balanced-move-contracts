@@ -148,14 +148,13 @@ module balanced::balanced_dollar_crosschain {
         xcall_manager_config: &XcallManagerConfig,
         fee: Coin<SUI>,
         token: Coin<BALANCED_DOLLAR>,
-        icon_bnusd_amount: Option<u128>,
+        icon_bnusd_amount: u128,
         to: String,
         data: Option<vector<u8>>,
         ctx: &mut TxContext
     ) {
         enforce_version(config);
         let messageData = option::get_with_default(&data, b"");
-        let icon_bnusd_amount = option::get_with_default(&icon_bnusd_amount, 0);
         let mut amount ;
         let mut cross_transfer_value = icon_bnusd_amount;
         if(icon_bnusd_amount > 0){
