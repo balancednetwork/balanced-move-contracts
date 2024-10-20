@@ -19,6 +19,7 @@ module balanced::crosschain_adapter{
     use balanced::balanced_utils::{address_to_hex_string, address_from_hex_string, create_execute_params, ExecuteParams};
     use sicx::sicx::{Self, SICX};
     use std::option::{some,none,Self};
+    
 
     const EAmountLessThanMinimumAmount: u64 = 1;
     const UnknownMessageType: u64 = 4;
@@ -118,11 +119,12 @@ module balanced::crosschain_adapter{
         to: String,
         data: Option<vector<u8>>,
         ctx: &mut TxContext
-    ) : Coin<T>{
+    ) {
         
         let messageData = option::get_with_default(&data, b"");
         let amount = coin::value(&token);
         assert!(amount>0, EAmountLessThanMinimumAmount);
+        coin::burn(get_treasury_cap_mut(config),token);
         let from = ctx.sender();
 
         let fromAddress = address_to_hex_string(&from);
@@ -146,7 +148,6 @@ module balanced::crosschain_adapter{
         
         let envelope = envelope::wrap_call_message_rollback(xcallMessage, rollback, sources, destinations);
         xcall::send_call(xcall_state, fee, get_idcap(config), config.icon_token_address, envelope::encode(&envelope), ctx);
-        token
     }
 
     public(package) fun get_execute_call_params<T>(config: &Config<T>): (ID, ID){
@@ -176,7 +177,7 @@ module balanced::crosschain_adapter{
         create_execute_params(type_args, result)
     }
 
-    public(package) fun execute_call<T>(config: &mut Config<T>, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext):Option<Mint>{
+    public(package) fun execute_call<T>(config: &mut Config<T>, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
         
         let ticket = xcall::execute_call(xcall, get_idcap(config), request_id, data, ctx);
         let msg = execute_ticket::message(&ticket);
@@ -191,11 +192,12 @@ module balanced::crosschain_adapter{
             let string_to = cross_transfer::to(&message);
             let to = network_address::addr(&network_address::from_string(string_to));
             let amount: u64 = translate_incoming_amount(cross_transfer::value(&message));
+            coin::mint_and_transfer(get_treasury_cap_mut(config), amount, address_from_hex_string(&to), ctx);
             xcall::execute_call_result(xcall,ticket,true,fee,ctx);
-            some(Mint { amount, to:address_from_hex_string(&to) })
+            
         } else{
             xcall::execute_call_result(xcall,ticket,false,fee,ctx);
-            none()
+            
         }
     }
 
@@ -206,7 +208,7 @@ module balanced::crosschain_adapter{
         xcall::execute_call_result(xcall,ticket,false,fee,ctx);
     }
 
-    public(package) fun execute_rollback<T>(config: &mut Config<T>, xcall:&mut XCallState, sn: u128, ctx:&mut TxContext):Option<Mint>{
+    public(package) fun execute_rollback<T>(config: &mut Config<T>, xcall:&mut XCallState, sn: u128, ctx:&mut TxContext){
         
         let ticket = xcall::execute_rollback(xcall, get_idcap(config), sn, ctx);
         let msg = rollback_ticket::rollback(&ticket);
@@ -219,8 +221,8 @@ module balanced::crosschain_adapter{
         let message: XCrossTransferRevert = cross_transfer_revert::decode(&msg);
         let to = cross_transfer_revert::to(&message);
         let amount: u64 = cross_transfer_revert::value(&message);
+        coin::mint_and_transfer(get_treasury_cap_mut(config), amount, to, ctx);
         xcall::execute_rollback_result(xcall,ticket,true);
-        some(Mint{amount,to})
     }
     
     public(package) fun get_treasury_cap_mut<T>(config: &mut Config<T>): &mut TreasuryCap<T>{

@@ -84,8 +84,7 @@ module balanced::sicx_crosschain {
     ) {
         enforce_version(config);
 
-       let token=  crosschain_adapter::cross_transfer(config, xcall_state, xcall_manager_config, fee, token, to, data, ctx);
-       sicx::burn(get_treasury_cap_mut(config),token);
+       crosschain_adapter::cross_transfer(config, xcall_state, xcall_manager_config, fee, token, to, data, ctx);
        
     }
 
@@ -106,11 +105,8 @@ module balanced::sicx_crosschain {
 
     entry fun execute_call(config: &mut Config<SICX>, xcall_manager_config: &XcallManagerConfig, xcall:&mut XCallState, fee: Coin<SUI>, request_id:u128, data:vector<u8>, ctx:&mut TxContext){
        enforce_version(config);
-       let mut result=crosschain_adapter::execute_call(config, xcall_manager_config, xcall, fee, request_id, data, ctx);
-       if ( result.is_some() ) {
-        let mint=result.extract();
-        sicx::mint(get_treasury_cap_mut(config), mint.get_mint_to(),  mint.get_mint_amount(), ctx);
-       }
+       crosschain_adapter::execute_call(config, xcall_manager_config, xcall, fee, request_id, data, ctx);
+       
     }
 
     //Called by admin when execute call fails without a rollback
@@ -121,20 +117,12 @@ module balanced::sicx_crosschain {
 
     entry fun execute_rollback(config: &mut Config<SICX>, xcall:&mut XCallState, sn: u128, ctx:&mut TxContext){
         enforce_version(config);
-        let result=crosschain_adapter::execute_rollback(config, xcall, sn, ctx);
-         if ( result.is_some() ) {
-        let mint=result.extract();
-        sicx::mint(get_treasury_cap_mut(config), mint.get_mint_to(),  mint.get_mint_amount(), ctx);
-       }
-
+        crosschain_adapter::execute_rollback(config, xcall, sn, ctx);
+        
     }
 
     fun enforce_version(self: &Config<SICX>){
         crosschain_adapter::enforce_version(self, CURRENT_VERSION);
-    }
-
-    fun get_treasury_cap_mut(config: &mut Config<SICX>): &mut TreasuryCap<SICX>{
-        crosschain_adapter::get_treasury_cap_mut(config)
     }
 
 
