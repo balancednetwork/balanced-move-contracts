@@ -2,34 +2,19 @@ module balanced::sicx_crosschain {
     use std::string::{String};
     use sui::coin::{Self, Coin, TreasuryCap};
     use sui::sui::SUI;
-    use sui::math;
     use sui::package::UpgradeCap;
-
-    use xcall::{main as xcall};
-    use xcall::xcall_utils;
     use xcall::xcall_state::{Self, Storage as XCallState, IDCap};
-    use xcall::envelope::{Self};
-    use xcall::network_address::{Self};
-    use xcall::execute_ticket::{Self};
-    use xcall::rollback_ticket::{Self};
 
     use balanced::xcall_manager::{Self, Config as XcallManagerConfig};
-    use balanced::cross_transfer::{Self, wrap_cross_transfer, XCrossTransfer};
-    use balanced::cross_transfer_revert::{Self, wrap_cross_transfer_revert, XCrossTransferRevert};
-    use balanced::balanced_utils::{address_to_hex_string, address_from_hex_string, create_execute_params, ExecuteParams};
-    use sicx::sicx::{Self, SICX};
+    use balanced::balanced_utils::{ExecuteParams};
+    use sicx::sicx::{SICX};
     use balanced::crosschain_adapter::{Self,WitnessCarrier,Config};
 
-    const EAmountLessThanMinimumAmount: u64 = 1;
-    const UnknownMessageType: u64 = 4;
-    const ENotUpgrade: u64 = 6;
-    const EWrongVersion: u64 = 7;
 
-    const CROSS_TRANSFER: vector<u8> = b"xCrossTransfer";
-    const CROSS_TRANSFER_REVERT: vector<u8> = b"xCrossTransferRevert";
+    const EWrongVersion: u64 = 7;
     const CURRENT_VERSION: u64 = 1;
 
-    public struct REGISTER_WITNESS has drop, store {}
+    public struct REGISTER_WITNESS has drop,store{}
 
 
     public struct AdminCap has key, store{

@@ -17,8 +17,7 @@ module balanced::crosschain_adapter{
     use balanced::cross_transfer::{Self, wrap_cross_transfer, XCrossTransfer};
     use balanced::cross_transfer_revert::{Self, wrap_cross_transfer_revert, XCrossTransferRevert};
     use balanced::balanced_utils::{address_to_hex_string, address_from_hex_string, create_execute_params, ExecuteParams};
-    use sicx::sicx::{Self, SICX};
-    use std::option::{some,none,Self};
+    use sui::types::{is_one_time_witness};
     
 
     const EAmountLessThanMinimumAmount: u64 = 1;
@@ -30,7 +29,7 @@ module balanced::crosschain_adapter{
     const CROSS_TRANSFER_REVERT: vector<u8> = b"xCrossTransferRevert";
 
 
-    public struct WitnessCarrier<T:store+drop> has key { 
+    public struct WitnessCarrier<T:drop> has key { 
         id: UID, 
         witness: T
     }
@@ -53,19 +52,6 @@ module balanced::crosschain_adapter{
         xcall_manager_id: ID, 
         xcall_id: ID,
         balanced_treasury_cap: TreasuryCap<T>
-    }
-
-    public struct Mint {
-        amount:u64,
-        to:address
-    }
-
-    public fun get_mint_amount(self:&Mint):u64{
-        self.amount
-    }
-
-    public fun get_mint_to(self:&Mint):address {
-        self.to
     }
 
     
@@ -238,6 +224,8 @@ module balanced::crosschain_adapter{
     }
 
     public(package) fun enforce_version<T>(self: &Config<T>,version:u64){
+        std::debug::print(&self.version);
+        std::debug::print(&version);
         assert!(self.version==version, EWrongVersion);
     }
 
