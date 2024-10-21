@@ -1,8 +1,7 @@
-module balanced::crosschain_adapter{
+module balanced_crosschain::balanced_crosschain{
     use std::string::{String};
     use sui::coin::{Self, Coin, TreasuryCap};
     use sui::sui::SUI;
-    use sui::math;
     use sui::package::UpgradeCap;
 
     use xcall::{main as xcall};
@@ -16,9 +15,7 @@ module balanced::crosschain_adapter{
     use balanced::xcall_manager::{Self, Config as XcallManagerConfig};
     use balanced::cross_transfer::{Self, wrap_cross_transfer, XCrossTransfer};
     use balanced::cross_transfer_revert::{Self, wrap_cross_transfer_revert, XCrossTransferRevert};
-    use balanced::balanced_utils::{address_to_hex_string, address_from_hex_string, create_execute_params, ExecuteParams};
-    use sui::types::{is_one_time_witness};
-    
+    use balanced::balanced_utils::{address_to_hex_string, address_from_hex_string, create_execute_params, ExecuteParams};    
 
     const EAmountLessThanMinimumAmount: u64 = 1;
     const UnknownMessageType: u64 = 4;
@@ -42,7 +39,6 @@ module balanced::crosschain_adapter{
         );
 
     }
-
 
     public struct Config<phantom T> has key, store{
         id: UID, 
@@ -235,12 +231,12 @@ module balanced::crosschain_adapter{
     }
     
     fun translate_outgoing_amount(amount: u64): u128 {
-        let multiplier = math::pow(10, 9) as u128;
+        let multiplier = std::u64::pow(10, 9) as u128;
         (amount as u128) * multiplier 
     }
 
     fun translate_incoming_amount(amount: u128): u64 {
-        (amount / ( math::pow(10, 9) as u128 ) ) as u64
+        (amount / ( std::u64::pow(10, 9) as u128 ) ) as u64
     }
 
     

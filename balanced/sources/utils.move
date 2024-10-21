@@ -29,7 +29,7 @@ module balanced::balanced_utils {
         if(string::length(str) == 66 ){
             modified_str = &str.substring(2, 66);
         };
-        let bytes = modified_str.bytes();
+        let bytes = modified_str.as_bytes();
         let hex_bytes = hex::decode(*bytes);
         bcs::peel_address(&mut bcs::new(hex_bytes))
     }

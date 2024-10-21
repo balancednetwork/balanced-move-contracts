@@ -2,10 +2,11 @@
 
 [move]
 version = 2
-manifest_digest = "BF0868F17212440AFF200CCEF5B38FE20D62DE64E9FDB115ABFA776FDD359334"
-deps_digest = "397E6A9F7A624706DBDFEE056CE88391A15876868FD18A88504DA74EB458D697"
+manifest_digest = "9CDF84C7E3F8F24A669C39E71E165FB9D494D0BF344C3280DB74BD84B718BDF8"
+deps_digest = "52B406A7A21811BEF51751CF88DA0E76DAEFFEAC888D4F4060B1A72BBE7D8D35"
 dependencies = [
   { name = "Sui" },
+  { name = "balanced" },
   { name = "balanced_dollar" },
   { name = "balanced_token" },
   { name = "sicx" },
@@ -25,8 +26,17 @@ dependencies = [
 ]
 
 [[move.package]]
+name = "balanced"
+source = { local = "../balanced" }
+
+dependencies = [
+  { name = "Sui" },
+  { name = "xcall" },
+]
+
+[[move.package]]
 name = "balanced_dollar"
-source = { local = "balanced_dollar" }
+source = { local = "../balanced_tokens/balanced_dollar" }
 
 dependencies = [
   { name = "Sui" },
@@ -34,7 +44,7 @@ dependencies = [
 
 [[move.package]]
 name = "balanced_token"
-source = { local = "balanced_token" }
+source = { local = "../balanced_tokens/balanced_token" }
 
 dependencies = [
   { name = "Sui" },
@@ -42,7 +52,7 @@ dependencies = [
 
 [[move.package]]
 name = "sicx"
-source = { local = "sicx" }
+source = { local = "../balanced_tokens/sicx" }
 
 dependencies = [
   { name = "Sui" },
@@ -69,11 +79,3 @@ dependencies = [
 compiler-version = "1.30.1"
 edition = "2024.beta"
 flavor = "sui"
-
-[env]
-
-[env.devnet]
-chain-id = "bd665407"
-original-published-id = "0xc3b318607b37719d40d57063b264ad13222cd7427ea8699c98e7f5480f846444"
-latest-published-id = "0xc3b318607b37719d40d57063b264ad13222cd7427ea8699c98e7f5480f846444"
-published-version = "1"
