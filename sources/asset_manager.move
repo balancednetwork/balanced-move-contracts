@@ -269,7 +269,9 @@ module balanced::asset_manager{
     }
 
     public fun get_withdraw_token_type(msg:vector<u8>): String{
-        deposit::get_token_type(&msg)
+        let mut prefix = string::utf8(b"0x");
+        prefix.append(deposit::get_token_type(&msg));
+        prefix
     }
 
     entry fun get_execute_call_params(config: &Config): (ID, ID){
