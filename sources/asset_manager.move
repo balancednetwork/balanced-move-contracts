@@ -37,7 +37,7 @@ module balanced::asset_manager{
     const EAlreadyRegistered: u64 = 7;
     const EWrongVersion: u64 = 8;
     const EInvalidPercentage: u64 = 9;
-    const CURRENT_VERSION: u64 = 4;
+    const CURRENT_VERSION: u64 = 5;
 
     public struct REGISTER_WITNESS has drop, store {}
 
