@@ -18,5 +18,5 @@
 [package]
   edition = '2024.beta'
   name = 'balanced'
-  published-at = '0xa3c66ac08bca78a475954683a872a296fd61a28d478c4a8ebce676fc38f502d6'
+  published-at = '0xede387fa2f3789f2e64d46744741d317b21f3022488d8f8ef850b3855ae37919'
   version = '0.0.1'
