@@ -37,7 +37,7 @@ module balanced::asset_manager{
     const EAlreadyRegistered: u64 = 7;
     const EWrongVersion: u64 = 8;
     const EInvalidPercentage: u64 = 9;
-    const CURRENT_VERSION: u64 = 4;
+    const CURRENT_VERSION: u64 = 5;
 
     public struct REGISTER_WITNESS has drop, store {}
 
@@ -269,7 +269,9 @@ module balanced::asset_manager{
     }
 
     public fun get_withdraw_token_type(msg:vector<u8>): String{
-        deposit::get_token_type(&msg)
+        let mut prefix = string::utf8(b"0x");
+        prefix.append(deposit::get_token_type(&msg));
+        prefix
     }
 
     entry fun get_execute_call_params(config: &Config): (ID, ID){
