@@ -6,7 +6,7 @@ edition = "2024.beta" # edition = "legacy" to use legacy (pre-2024) Move
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
-xcall = { git = "https://github.com/icon-project/xcall-multi.git", subdir = "contracts/sui/xcall", rev = "main" }
+xcall = { git = "https://github.com/icon-project/xcall-multi.git", subdir = "contracts/sui/xcall", rev = "sui-xcall-testnet-deploy" }
 balanced_token = { local = "../balanced_tokens/balanced_token" }
 sicx = {local = "../balanced_tokens/sicx" }
 balanced_dollar = { local = "../balanced_tokens/balanced_dollar" }
