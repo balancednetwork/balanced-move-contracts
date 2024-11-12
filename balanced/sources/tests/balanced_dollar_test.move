@@ -21,6 +21,7 @@ module balanced::balanced_dollar_test {
     use balanced::xcall_manager::{Self, WitnessCarrier as XcallManagerWitnessCarrier};
     use balanced::balanced_dollar_crosschain::{Self, AdminCap, Config, configure, cross_transfer, cross_transfer_exact, WitnessCarrier, get_treasury_cap_for_testing    };
     use balanced_dollar::balanced_dollar::{Self, BALANCED_DOLLAR};
+    use balanced::balanced_dollar_crosschain::{REGISTER_WITNESS};
     
     use balanced::cross_transfer::{wrap_cross_transfer, encode};
     use balanced::cross_transfer_revert::{Self, wrap_cross_transfer_revert};

@@ -53,7 +53,7 @@ module balanced::asset_manager_test {
 
         scenario.next_tx(admin);
         let xcallManagerConfig: xcall_manager::Config  = scenario.take_shared<xcall_manager::Config>();
-        configure(&adminCap, &xcallManagerConfig, &xcall_state, carrier, string::utf8(ICON_ASSET_MANAGER), 4, scenario.ctx());
+        configure(&adminCap, &xcallManagerConfig, &xcall_state, carrier, string::utf8(ICON_ASSET_MANAGER), 5, scenario.ctx());
       
         test_scenario::return_shared<XCallState>(xcall_state);
         test_scenario::return_shared<xcall_manager::Config>(xcallManagerConfig);
