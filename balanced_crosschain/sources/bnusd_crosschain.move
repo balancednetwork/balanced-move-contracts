@@ -1,4 +1,4 @@
-module balanced_crosschain::balanced_dollar_crosschain {
+module balanced_crosschain::bnusd_crosschain {
     use std::string::{String};
     use sui::coin::{ Coin, TreasuryCap};
     use sui::sui::SUI;
