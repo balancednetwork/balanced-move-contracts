@@ -1,10 +1,14 @@
-[package]
-name = "balanced_token"
-version = "0.0.1"
-edition = "2024.beta"
+[addresses]
+  balanced_token = '0xe8f1dde640e7e89237454c7c9926ed03100aa12d22e64d64784c8a4e8743f6a7'
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
+  [dependencies.Sui]
+    git = 'https://github.com/MystenLabs/sui.git'
+    rev = 'framework/testnet'
+    subdir = 'crates/sui-framework/packages/sui-framework'
 
-[addresses]
-balanced_token = "0x0"
+[package]
+  edition = '2024.beta'
+  name = 'balanced_token'
+  published-at = '0xe8f1dde640e7e89237454c7c9926ed03100aa12d22e64d64784c8a4e8743f6a7'
+  version = '0.0.1'
