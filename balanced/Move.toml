@@ -8,7 +8,7 @@
     subdir = 'crates/sui-framework/packages/sui-framework'
 
   [dependencies.balanced_dollar]
-    local = 'balanced_dollar'
+    local = '../balanced_tokens/balanced_dollar'
 
   [dependencies.xcall]
     git = 'https://github.com/icon-project/xcall-multi.git'
