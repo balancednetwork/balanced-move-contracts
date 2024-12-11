@@ -2,12 +2,21 @@
   balanced = '0xbaa0fb7107f9a01ef1cd10c5464534943df999c5b69829006ff14866c56b2b44'
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
-xcall = { git = "https://github.com/icon-project/xcall-multi.git", subdir = "contracts/sui/xcall", rev = "sui-xcall-testnet-deploy" }
-balanced_dollar = { local = "../balanced_tokens/balanced_dollar" }
+  [dependencies.Sui]
+    git = 'https://github.com/MystenLabs/sui.git'
+    rev = 'framework/testnet'
+    subdir = 'crates/sui-framework/packages/sui-framework'
+
+  [dependencies.balanced_dollar]
+    local = '../balanced_tokens/balanced_dollar'
+
+  [dependencies.xcall]
+    git = 'https://github.com/icon-project/xcall-multi.git'
+    rev = 'sui-xcall-testnet-deploy'
+    subdir = 'contracts/sui/xcall'
 
 [package]
   edition = '2024.beta'
   name = 'balanced'
-  published-at = '0x95d86fab55e8c38a5449037d8a9bddab83117bf608a19b7fbe3360a1b4b2ac11'
+  published-at = '0x273507b0283232d745a8cef8c4ebb794708dc4522d00d93464daefa44345a5e1'
   version = '0.0.1'

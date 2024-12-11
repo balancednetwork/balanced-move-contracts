@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "5A0BF100F234B3FC664540457035A959FA83DD5DF74554C3FAC6C5D2CAA487B7"
+manifest_digest = "96BB638685E956620BAF735C80B4AC24CD1C1F4D2C69DECB2722462C94F30A5D"
 
 deps_digest = "060AD7E57DFB13104F21BE5F5C3759D03F0553FC3229247D9A7A6B45F50D03A3"
 dependencies = [
@@ -25,7 +25,6 @@ dependencies = [
 
 [[move.package]]
 id = "balanced_dollar"
-
 source = { local = "../balanced_tokens/balanced_dollar" }
 
 dependencies = [
@@ -35,7 +34,6 @@ dependencies = [
 [[move.package]]
 id = "sui_rlp"
 source = { git = "https://github.com/icon-project/xcall-multi.git", rev = "sui-xcall-testnet-deploy", subdir = "contracts/sui/libs/sui_rlp" }
-
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -66,5 +64,5 @@ published-version = "1"
 [env.testnet]
 chain-id = "4c78adac"
 original-published-id = "0xbaa0fb7107f9a01ef1cd10c5464534943df999c5b69829006ff14866c56b2b44"
-latest-published-id = "0x95d86fab55e8c38a5449037d8a9bddab83117bf608a19b7fbe3360a1b4b2ac11"
-published-version = "10"
+latest-published-id = "0x273507b0283232d745a8cef8c4ebb794708dc4522d00d93464daefa44345a5e1"
+published-version = "11"
