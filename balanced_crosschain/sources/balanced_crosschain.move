@@ -21,6 +21,8 @@ module balanced_crosschain::balanced_crosschain{
     const UnknownMessageType: u64 = 4;
     const ENotUpgrade: u64 = 6;
     const EWrongVersion: u64 = 7;
+    const EAmountOverflow: u64 = 8;
+
 
     const CROSS_TRANSFER: vector<u8> = b"xCrossTransfer";
     const CROSS_TRANSFER_REVERT: vector<u8> = b"xCrossTransferRevert";
@@ -236,7 +238,9 @@ module balanced_crosschain::balanced_crosschain{
     }
 
     fun translate_incoming_amount(amount: u128): u64 {
-        (amount / ( std::u64::pow(10, 9) as u128 ) ) as u64
+        let result = amount / (std::u64::pow(10, 9) as u128);
+        assert!(result <= (std::u64::max_value!() as u128), EAmountOverflow);
+        (result as u64)
     }
 
     
