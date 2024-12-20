@@ -68,6 +68,23 @@ module balanced_crosschain::bnusd_crosschain {
        
     }
 
+    entry fun cross_transfer_exact(
+        config: &mut Config<BALANCED_DOLLAR>,
+        xcall_state: &mut XCallState,
+        xcall_manager_config: &XcallManagerConfig,
+        fee: Coin<SUI>,
+        token: Coin<BALANCED_DOLLAR>,
+        icon_amount: u128,
+        to: String,
+        data: Option<vector<u8>>,
+        ctx: &mut TxContext
+    ) {
+        enforce_version(config);
+
+       balanced_crosschain::cross_transfer_exact(config, xcall_state, xcall_manager_config, fee, token, icon_amount, to, data, ctx);
+       
+    }
+
     entry fun get_execute_call_params(config: &Config<BALANCED_DOLLAR>): (ID, ID){
          enforce_version(config);
         balanced_crosschain::get_execute_call_params(config)
