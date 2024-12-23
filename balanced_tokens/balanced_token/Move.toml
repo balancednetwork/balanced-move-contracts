@@ -2,9 +2,10 @@
 name = "balanced_token"
 version = "0.0.1"
 edition = "2024.beta"
+published-at = "0x3ae6be8e58c0e0715764971b750709e67c6de33e38bbecafe25b5f3dd5080a39"
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/mainnet" }
 
 [addresses]
-balanced_token = "0x0"
+balanced_token = "0x3ae6be8e58c0e0715764971b750709e67c6de33e38bbecafe25b5f3dd5080a39"

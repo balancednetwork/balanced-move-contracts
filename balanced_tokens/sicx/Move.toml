@@ -2,9 +2,10 @@
 name = "sicx"
 version = "0.0.1"
 edition = "2024.beta"
+published-at = "0x84bf1838f4fb91b22fe12af02658c27f53f89c36f2ea6c8b6a878f0e48ec1b4e"
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/mainnet" }
 
 [addresses]
-sicx = "0x0"
+sicx = "0x84bf1838f4fb91b22fe12af02658c27f53f89c36f2ea6c8b6a878f0e48ec1b4e"

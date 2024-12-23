@@ -21,10 +21,11 @@ module balanced_crosschain::balanced_crosschain{
     const UnknownMessageType: u64 = 4;
     const ENotUpgrade: u64 = 6;
     const EWrongVersion: u64 = 7;
+    const EAmountNotEqualToIconAmount: u64 = 9;
 
     const CROSS_TRANSFER: vector<u8> = b"xCrossTransfer";
     const CROSS_TRANSFER_REVERT: vector<u8> = b"xCrossTransferRevert";
-
+    const DIVISOR: u128 = 1000000000;
 
     public struct WitnessCarrier<T:drop> has key { 
         id: UID, 
@@ -103,8 +104,50 @@ module balanced_crosschain::balanced_crosschain{
         ctx: &mut TxContext
     ) {
         
-        let messageData = option::get_with_default(&data, b"");
         let amount = coin::value(&token);
+        let cross_transfer_value = translate_outgoing_amount(amount);
+        cross_transfer_internal(config, xcall_state, xcall_manager_config, fee, token, cross_transfer_value, amount, to, data, ctx);
+    }
+
+    public(package) fun cross_transfer_exact<T>(
+        config: &mut Config<T>,
+        xcall_state: &mut XCallState,
+        xcall_manager_config: &XcallManagerConfig,
+        fee: Coin<SUI>,
+        token: Coin<T>,
+        icon_amount: u128,
+        to: String,
+        data: Option<vector<u8>>,
+        ctx: &mut TxContext
+    ) {
+        
+        let (amount, cross_transfer_value) = if(icon_amount > 0){
+            let mut amount = (icon_amount / DIVISOR) as u64;
+            if(icon_amount % DIVISOR > 0){
+                amount = amount+1
+            };
+            assert!(amount == coin::value(&token), EAmountNotEqualToIconAmount);
+            (amount, icon_amount)
+        }else{
+            let amount = coin::value(&token);
+            (amount, translate_outgoing_amount(amount))
+        };
+        cross_transfer_internal(config, xcall_state, xcall_manager_config, fee, token, cross_transfer_value, amount, to, data, ctx);
+    }
+
+    fun cross_transfer_internal<T>(
+        config: &mut Config<T>,
+        xcall_state: &mut XCallState,
+        xcall_manager_config: &XcallManagerConfig,
+        fee: Coin<SUI>,
+        token: Coin<T>,
+        cross_transfer_value: u128,
+        amount: u64,
+        to: String,
+        data: Option<vector<u8>>,
+        ctx: &mut TxContext
+    ) {
+        let messageData = option::get_with_default(&data, b"");
         assert!(amount>0, EAmountLessThanMinimumAmount);
         coin::burn(get_treasury_cap_mut(config),token);
         let from = ctx.sender();
@@ -114,7 +157,7 @@ module balanced_crosschain::balanced_crosschain{
         let xcallMessageStruct = wrap_cross_transfer(
             fromAddress,
             to,
-            translate_outgoing_amount(amount),
+            cross_transfer_value,
             messageData
         );
 
@@ -131,6 +174,7 @@ module balanced_crosschain::balanced_crosschain{
         let envelope = envelope::wrap_call_message_rollback(xcallMessage, rollback, sources, destinations);
         xcall::send_call(xcall_state, fee, get_idcap(config), config.icon_token_address, envelope::encode(&envelope), ctx);
     }
+    
 
     public(package) fun get_execute_call_params<T>(config: &Config<T>): (ID, ID){
         (get_xcall_manager_id(config), get_xcall_id(config))
