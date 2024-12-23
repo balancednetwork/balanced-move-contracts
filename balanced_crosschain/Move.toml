@@ -1,8 +1,10 @@
 [package]
 name = "balanced_crosschain"
 edition = "2024.beta" # edition = "legacy" to use legacy (pre-2024) Move
+published-at = "0x2bda1780dc59243386d205f1855cde689dbbb87003d71a2518832638589d48cf"
 # license = ""           # e.g., "MIT", "GPL", "Apache 2.0"
 # authors = ["..."]      # e.g., ["Joe Smith (joesmith@noemail.com)", "John Snow (johnsnow@noemail.com)"]
+
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/mainnet" }
@@ -24,7 +26,7 @@ balanced = {local = "../balanced"}
 # Override = { local = "../conflicting/version", override = true }
 
 [addresses]
-balanced_crosschain = "0x0"
+balanced_crosschain = "0x2bda1780dc59243386d205f1855cde689dbbb87003d71a2518832638589d48cf"
 
 # Named addresses will be accessible in Move as `@name`. They're also exported:
 # for example, `std = "0x1"` is exported by the Standard Library.
