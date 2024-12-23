@@ -2,82 +2,82 @@
 
 [move]
 version = 3
-manifest_digest = "C761E0B96F59084E5248C3E8595C459F3CBA9A84082DDA52E4FC2C951B494AC4"
+manifest_digest = "3054D7CBA28A888075712F1F5959609C95FD8E9EBFFB9141E74DBB969954BCC7"
 deps_digest = "52B406A7A21811BEF51751CF88DA0E76DAEFFEAC888D4F4060B1A72BBE7D8D35"
 dependencies = [
-  { id = "Sui", name = "Sui" },
-  { id = "balanced", name = "balanced" },
-  { id = "balanced_dollar", name = "balanced_dollar" },
-  { id = "balanced_token", name = "balanced_token" },
-  { id = "sicx", name = "sicx" },
-  { id = "xcall", name = "xcall" },
+  { name = "Sui" },
+  { name = "balanced" },
+  { name = "balanced_dollar" },
+  { name = "balanced_token" },
+  { name = "sicx" },
+  { name = "xcall" },
 ]
 
 [[move.package]]
-id = "MoveStdlib"
-source = { git = "https://github.com/MystenLabs/sui.git", rev = "framework/testnet", subdir = "crates/sui-framework/packages/move-stdlib" }
+name = "MoveStdlib"
+source = { git = "https://github.com/MystenLabs/sui.git", rev = "framework/mainnet", subdir = "crates/sui-framework/packages/move-stdlib" }
 
 [[move.package]]
-id = "Sui"
-source = { git = "https://github.com/MystenLabs/sui.git", rev = "framework/testnet", subdir = "crates/sui-framework/packages/sui-framework" }
+name = "Sui"
+source = { git = "https://github.com/MystenLabs/sui.git", rev = "framework/mainnet", subdir = "crates/sui-framework/packages/sui-framework" }
 
 dependencies = [
-  { id = "MoveStdlib", name = "MoveStdlib" },
+  { name = "MoveStdlib" },
 ]
 
 [[move.package]]
-id = "balanced"
+name = "balanced"
 source = { local = "../balanced" }
 
 dependencies = [
-  { id = "Sui", name = "Sui" },
-  { id = "balanced_dollar", name = "balanced_dollar" },
-  { id = "xcall", name = "xcall" },
+  { name = "Sui" },
+  { name = "balanced_dollar" },
+  { name = "xcall" },
 ]
 
 [[move.package]]
-id = "balanced_dollar"
+name = "balanced_dollar"
 source = { local = "../balanced_tokens/balanced_dollar" }
 
 dependencies = [
-  { id = "Sui", name = "Sui" },
+  { name = "Sui" },
 ]
 
 [[move.package]]
-id = "balanced_token"
+name = "balanced_token"
 source = { local = "../balanced_tokens/balanced_token" }
 
 dependencies = [
-  { id = "Sui", name = "Sui" },
+  { name = "Sui" },
 ]
 
 [[move.package]]
-id = "sicx"
+name = "sicx"
 source = { local = "../balanced_tokens/sicx" }
 
 dependencies = [
-  { id = "Sui", name = "Sui" },
+  { name = "Sui" },
 ]
 
 [[move.package]]
-id = "sui_rlp"
-source = { git = "https://github.com/icon-project/xcall-multi.git", rev = "sui-xcall-testnet-deploy", subdir = "contracts/sui/libs/sui_rlp" }
+name = "sui_rlp"
+source = { git = "https://github.com/icon-project/xcall-multi.git", rev = "sui-xcall-mainnet-deploy", subdir = "contracts/sui/libs/sui_rlp" }
 
 dependencies = [
-  { id = "Sui", name = "Sui" },
+  { name = "Sui" },
 ]
 
 [[move.package]]
-id = "xcall"
-source = { git = "https://github.com/icon-project/xcall-multi.git", rev = "sui-xcall-testnet-deploy", subdir = "contracts/sui/xcall" }
+name = "xcall"
+source = { git = "https://github.com/icon-project/xcall-multi.git", rev = "sui-xcall-mainnet-deploy", subdir = "contracts/sui/xcall" }
 
 dependencies = [
-  { id = "Sui", name = "Sui" },
-  { id = "sui_rlp", name = "sui_rlp" },
+  { name = "Sui" },
+  { name = "sui_rlp" },
 ]
 
 [move.toolchain-version]
-compiler-version = "1.37.1"
+compiler-version = "1.30.1"
 edition = "2024.beta"
 flavor = "sui"
 
@@ -86,5 +86,5 @@ flavor = "sui"
 [env.mainnet]
 chain-id = "4c78adac"
 original-published-id = "0x2bda1780dc59243386d205f1855cde689dbbb87003d71a2518832638589d48cf"
-latest-published-id = "0x2bda1780dc59243386d205f1855cde689dbbb87003d71a2518832638589d48cf"
-published-version = "1"
+latest-published-id = "0x0420fdd0afe2f06f2ecac4395503565dcb6abaf4b5310298d4abe5f2667911ad"
+published-version = "2"
