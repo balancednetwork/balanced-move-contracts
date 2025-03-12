@@ -2,7 +2,7 @@
 
 [move]
 version = 2
-manifest_digest = "0814758C0401632702E53F5CA15B8A62741A4465059D8360D43F323630B3B4C5"
+manifest_digest = "3040919BDCE43AA6B8ECE42BDA9A6AC5D05850B4AF7406A213019AC0AD084E8B"
 deps_digest = "060AD7E57DFB13104F21BE5F5C3759D03F0553FC3229247D9A7A6B45F50D03A3"
 dependencies = [
   { name = "Sui" },
@@ -24,7 +24,7 @@ dependencies = [
 
 [[move.package]]
 name = "balanced_dollar"
-source = { local = "balanced_dollar" }
+source = { local = "../balanced_tokens/balanced_dollar" }
 
 dependencies = [
   { name = "Sui" },
@@ -63,5 +63,5 @@ published-version = "1"
 [env.mainnet]
 chain-id = "35834a8a"
 original-published-id = "0x8e5eea2ec2d387432a423813107bd873dfb05c2ed22a9c8f61d55211b759560b"
-latest-published-id = "0xede387fa2f3789f2e64d46744741d317b21f3022488d8f8ef850b3855ae37919"
-published-version = "6"
+latest-published-id = "0x64f781b9718f889c62f66ea934050de4b785f200ae8ac44e85efdd990150afe1"
+published-version = "7"
